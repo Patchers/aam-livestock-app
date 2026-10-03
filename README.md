@@ -9,11 +9,8 @@ bottom sheets, toasts, pull-to-refresh, saved-listings watchlist and offline cac
 - `sw.js` — service worker, caches the shell for offline use
 - `icon-192.png` / `icon-512.png` / `icon-maskable.png` — home-screen icons
 
-## Demoing it now
-Open `index.html` in a browser. Everything works except install and offline —
-those need the files served over HTTP(S), which is a browser security rule, not a bug.
-
-To test those locally:
+## Running it locally
+The app loads Firebase as ES modules, which browsers block on `file://`. Serve it:
 ```
 cd this-folder
 python3 -m http.server 8080
@@ -21,11 +18,11 @@ python3 -m http.server 8080
 Then open `http://localhost:8080` on your laptop, or your machine's LAN IP on your phone.
 
 ## Deploying
-Push all files to a GitHub repo, then **Settings → Pages → Deploy from branch → main → / (root)**.
-Once live over HTTPS, phones will offer "Add to Home Screen" and it opens fullscreen
-with no browser bars.
+Push to `main`; GitHub Pages serves it from the root. Security rules are separate: paste
+`firestore.rules` and `storage.rules` into the Firebase console whenever they change.
 
-## Demo notes
-- Any email and password logs you in on both Sell and Admin.
-- Data resets on refresh — handy for re-running a demo.
-- Submit a listing under Sell, then approve it under Admin to show the full loop.
+## Testing notes
+- Farmers create an account on the Sell tab. Listings stay "In review" until approved.
+- Admin is limited to the emails in `ADMIN_EMAILS` (index.html) **and** `firestore.rules`.
+  The admin email must be verified — a link is sent on sign-up.
+- On an empty database, the Admin tab offers **Load demo data** (sale yards, events, listings).

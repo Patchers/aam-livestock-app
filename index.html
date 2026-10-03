@@ -308,9 +308,10 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
       <div id="sellAuth">
         <div class="form" style="padding-top:22px">
           <div class="seg"><button id="tIn" class="on">Log in</button><button id="tUp">Create account</button></div>
-          <div class="fld"><label for="aEmail">Email</label><input type="email" id="aEmail" value="farmer@example.co.za" autocomplete="email"></div>
-          <div class="fld"><label for="aPass">Password</label><input type="password" id="aPass" value="demo123"><div class="hint">Demo — any email and password works.</div></div>
+          <div class="fld"><label for="aEmail">Email</label><input type="email" id="aEmail" autocomplete="email"></div>
+          <div class="fld"><label for="aPass">Password</label><input type="password" id="aPass" autocomplete="current-password"><div class="hint">At least 6 characters.</div></div>
           <button class="btn" id="doAuth">Log in</button>
+          <button class="btn ghost" id="doReset" style="margin-top:10px">Forgot password</button>
         </div>
       </div>
       <div id="sellMain" style="display:none">
@@ -327,8 +328,8 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
     <section class="screen" id="s-admin">
       <div id="admAuth">
         <div class="form" style="padding-top:22px">
-          <div class="fld"><label for="adE">Email</label><input type="email" id="adE" value="office@example.co.za"></div>
-          <div class="fld"><label for="adP">Password</label><input type="password" id="adP" value="demo123"><div class="hint">Demo — any email and password works.</div></div>
+          <div class="fld"><label for="adE">Email</label><input type="email" id="adE" autocomplete="email"></div>
+          <div class="fld"><label for="adP">Password</label><input type="password" id="adP" autocomplete="current-password"><div class="hint">Office accounts only.</div></div>
           <button class="btn" id="doAdm">Log in</button>
         </div>
       </div>
@@ -379,7 +380,29 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
 <div id="toast"></div>
 
-<script>
+<script type="module">
+/* ============================================================
+   FIREBASE
+   ============================================================ */
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,sendEmailVerification} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {getFirestore,collection,doc,query,where,onSnapshot,addDoc,updateDoc,deleteDoc,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import {getStorage,ref as sref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyDgM54QWo4U8eHO0pEjP_52lnE9JWGgPEc",
+  authDomain:"aam-livestock.firebaseapp.com",
+  projectId:"aam-livestock",
+  storageBucket:"aam-livestock.firebasestorage.app",
+  messagingSenderId:"513990494263",
+  appId:"1:513990494263:web:14736bab75f3b28b3997b2"
+};
+const fbApp=initializeApp(firebaseConfig);
+const auth=getAuth(fbApp),db=getFirestore(fbApp),storage=getStorage(fbApp);
+
+// UX only. The real check is isAdmin() in firestore.rules — keep the two lists in sync.
+const ADMIN_EMAILS=["johnchutton@gmail.com"];
+
 /* ============================================================
    DATA
    ============================================================ */
@@ -395,7 +418,8 @@ const IMG={
   stud:U+"photo-1595456982104-14cc660c4d22?w=800&q=70"
 };
 
-let venues=[
+// Starter data, written once by an admin via "Load demo data". Ids here only link the seed rows together.
+const SEED_VENUES=[
   {id:1,name:"Mooi River Sale Yard",town:"Mooi River, KZN",contact:"+27 33 263 1000",map:"https://maps.google.com/?q=Mooi+River+KZN",note:"Certified scale on site, covered pens. Entrance off the R103."},
   {id:2,name:"Lions River Sale Yard",town:"Lions River, KZN",contact:"+27 33 263 1000",map:"https://maps.google.com/?q=Lions+River+KZN",note:"Weekly standard sales. Double-deck loading ramps."},
   {id:3,name:"Estcourt Sale Yard",town:"Estcourt, KZN",contact:"+27 36 352 4000",map:"https://maps.google.com/?q=Estcourt+KZN",note:"Large holding capacity, catering on sale days."},
@@ -403,7 +427,7 @@ let venues=[
   {id:5,name:"Bergville Sale Yard",town:"Bergville, KZN",contact:"+27 36 448 1000",map:"https://maps.google.com/?q=Bergville+KZN",note:"Monthly standard sale, open pens."}
 ];
 const fd=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
-let events=[
+const SEED_EVENTS=[
   {id:1,title:"Mooi River Standard Sale",cat:"Standard Sale",date:fd(3),start:"10:00",end:"17:00",ven:1,img:IMG.winter,who:"Mike Bauer",tel:"084 407 3000",em:"mike@example.co.za",note:"Weaners, cows and oxen. Entries close two days before the sale."},
   {id:2,title:"Mooi River Weaner Session",cat:"Standard Sale",date:fd(3),start:"14:00",end:"17:00",ven:1,img:IMG.calf,who:"Mike Bauer",tel:"084 407 3000",em:"mike@example.co.za",note:"Second session at the same yard, weaners only."},
   {id:3,title:"Lions River Standard Sale",cat:"Standard Sale",date:fd(8),start:"10:00",end:"17:00",ven:2,img:IMG.nguni,who:"Ed Cadle",tel:"082 802 7540",em:"ed@example.co.za",note:""},
@@ -412,7 +436,7 @@ let events=[
   {id:6,title:"Bergville Standard Sale",cat:"Standard Sale",date:fd(31),start:"12:00",end:"17:00",ven:5,img:IMG.dusk,who:"Theron Conradie",tel:"083 776 4956",em:"theron@example.co.za",note:""},
   {id:7,title:"KZN Bonsmara Club Sale",cat:"Production Sale",date:fd(45),start:"09:00",end:"16:00",ven:4,img:IMG.bull,who:"Ed Cadle",tel:"082 802 7540",em:"ed@example.co.za",note:"Multi-breeder club sale. Registered stud animals only."}
 ];
-let stock=[
+const SEED_STOCK=[
   {id:1,lot:"BN0421",breed:"Bonsmara",type:"Bull",wt:780,price:42000,loc:"Mooi River, KZN",desc:"Proven breeding bull with an excellent temperament. Full vaccination record available, sound feet and legs, working well in a multi-sire herd.",who:"P. Naidoo",tel:"+27821234567",img:IMG.bull,st:"live",mine:false},
   {id:2,lot:"NG1178",breed:"Nguni",type:"Cow",wt:410,price:16500,loc:"Estcourt, KZN",desc:"In calf, due September. Hardy and low maintenance, raised on sourveld with minimal supplementation.",who:"S. Mthembu",tel:"+27835551212",img:IMG.winter,st:"live",mine:false},
   {id:3,lot:"BR0903",breed:"Brahman Cross",type:"Heifer",wt:355,price:14200,loc:"Howick, KZN",desc:"Well grown heifer, tick resistant and ready for first service. Dosed and vaccinated.",who:"D. van Wyk",tel:"+27824447788",img:IMG.herd,st:"live",mine:false},
@@ -424,14 +448,16 @@ let stock=[
   {id:8,lot:"SM4419",breed:"Simmentaler",type:"Bull",wt:820,price:51000,loc:"Greytown, KZN",desc:"Young bull, semen tested and passed. Registration papers available on request.",who:"K. Botha",tel:"+27825556699",img:IMG.stud,st:"pending",mine:false}
 ];
 
+let venues=[],events=[],liveL=[],mineL=[],pendL=[];
+const loaded={ven:false,ev:false,live:false};
+const allL=()=>[...liveL,...mineL,...pendL];
 let saved=new Set();
-let nid=700;
 
 /* ============================================================
    HELPERS
    ============================================================ */
 const $=i=>document.getElementById(i);
-const esc=s=>{const d=document.createElement("div");d.textContent=s||"";return d.innerHTML;};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 const V=id=>venues.find(v=>v.id===id)||{name:"Venue to be confirmed",town:"",map:"",contact:""};
 const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const TODAY=iso(new Date());
@@ -440,6 +466,16 @@ const dLong=d=>new Date(d+"T00:00:00").toLocaleDateString("en-GB",{weekday:"long
 const dShort=d=>new Date(d+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"});
 const rand=(a,b)=>{const t=[];for(let i=a;i<=b;i++)t.push(i);return t;};
 const money=n=>"R "+Number(n).toLocaleString("en-ZA");
+const ts=x=>x.createdAt?.toMillis?.()??Date.now();
+
+// Snapshot -> plain rows. Listings keep `st` as the app's name for `status`, and numbers are
+// coerced because they're rendered unescaped.
+const rows=snap=>snap.docs.map(d=>{
+  const x=d.data({serverTimestamps:"estimate"}),r={...x,id:d.id};
+  if("status" in x)Object.assign(r,{st:x.status,price:Number(x.price)||0,wt:Number(x.wt)||null,qty:Number(x.qty)||null});
+  return r;
+});
+const listen=(q,cb)=>onSnapshot(q,s=>cb(rows(s)),e=>{console.error(e);toast("Couldn't load data — "+(e.code||e.message),1);});
 
 const IC={
   clock:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -485,6 +521,7 @@ function toast(msg,err){
 /* ---------- sheet ---------- */
 function openSheet(html){$("sheetBody").innerHTML=html;$("sheet").classList.add("open");$("scrim").classList.add("open");}
 function closeSheet(){$("sheet").classList.remove("open");$("scrim").classList.remove("open");}
+window.closeSheet=closeSheet;
 $("scrim").onclick=closeSheet;
 
 /* ---------- detail stack ---------- */
@@ -527,23 +564,23 @@ $("barSearch").onclick=()=>{
 /* ============================================================
    FILTERS
    ============================================================ */
-let fSaleCat="", fSaleVen=0, fBreed="", fType="", fSort="new", fSavedOnly=false;
+let fSaleCat="", fSaleVen="", fBreed="", fType="", fSort="new", fSavedOnly=false;
 
 function drawChips(){
   const cats=["All sales","Standard Sale","Production Sale"];
   $("saleChips").innerHTML=cats.map(c=>{
     const val=c==="All sales"?"":c;
     return `<button class="chip${fSaleCat===val?" on":""}" onclick="setCat('${val}')">${c}</button>`;
-  }).join("")+venues.map(v=>`<button class="chip${fSaleVen===v.id?" on":""}" onclick="setVen(${v.id})">${esc(v.name.replace(" Sale Yard","").replace(" Showgrounds",""))}</button>`).join("");
+  }).join("")+venues.map(v=>`<button class="chip${fSaleVen===v.id?" on":""}" onclick="setVen('${v.id}')">${esc(v.name.replace(" Sale Yard","").replace(" Showgrounds",""))}</button>`).join("");
 
-  const breeds=[...new Set(stock.filter(s=>s.st==="live").map(s=>s.breed))].sort();
+  const breeds=[...new Set(liveL.map(s=>s.breed))].sort();
   $("mktChips").innerHTML=
     `<button class="chip${!fBreed&&!fType&&!fSavedOnly?" on":""}" onclick="clearMkt()">All stock</button>`+
     `<button class="chip${fSavedOnly?" on":""}" onclick="toggleSaved()">♥ Saved${saved.size?" ("+saved.size+")":""}</button>`+
-    breeds.map(b=>`<button class="chip${fBreed===b?" on":""}" onclick="setBreed('${b}')">${b}</button>`).join("");
+    breeds.map(b=>`<button class="chip${fBreed===b?" on":""}" data-v="${esc(b)}" onclick="setBreed(this.dataset.v)">${esc(b)}</button>`).join("");
 }
 window.setCat=v=>{fSaleCat=fSaleCat===v?"":v;fSaleVen=0;drawChips();drawSales();updDot();};
-window.setVen=v=>{fSaleVen=fSaleVen===v?0:v;drawChips();drawSales();updDot();};
+window.setVen=v=>{fSaleVen=fSaleVen===v?"":v;drawChips();drawSales();updDot();};
 window.setBreed=b=>{fBreed=fBreed===b?"":b;fSavedOnly=false;drawChips();drawMarket();updDot();};
 window.clearMkt=()=>{fBreed="";fType="";fSavedOnly=false;drawChips();drawMarket();updDot();};
 window.toggleSaved=()=>{fSavedOnly=!fSavedOnly;if(fSavedOnly)fBreed="";drawChips();drawMarket();updDot();};
@@ -557,16 +594,16 @@ $("barFilter").onclick=()=>{
     openSheet(`<h3>Filter sales</h3>
       ${["","Standard Sale","Production Sale"].map(c=>`<div class="opt${fSaleCat===c?" on":""}" onclick="setCat('${c}');closeSheet()">${c||"All sale types"}${fSaleCat===c?IC.check:""}</div>`).join("")}
       <h3 style="margin-top:20px">Venue</h3>
-      <div class="opt${!fSaleVen?" on":""}" onclick="setVen(0);closeSheet()">All venues${!fSaleVen?IC.check:""}</div>
-      ${venues.map(v=>`<div class="opt${fSaleVen===v.id?" on":""}" onclick="setVen(${v.id});closeSheet()">${esc(v.name)}${fSaleVen===v.id?IC.check:""}</div>`).join("")}`);
+      <div class="opt${!fSaleVen?" on":""}" onclick="setVen('');closeSheet()">All venues${!fSaleVen?IC.check:""}</div>
+      ${venues.map(v=>`<div class="opt${fSaleVen===v.id?" on":""}" onclick="setVen('${v.id}');closeSheet()">${esc(v.name)}${fSaleVen===v.id?IC.check:""}</div>`).join("")}`);
   }else{
-    const types=[...new Set(stock.filter(s=>s.st==="live").map(s=>s.type))].sort();
+    const types=[...new Set(liveL.map(s=>s.type))].sort();
     const sorts={new:"Most recent",pa:"Price — low to high",pd:"Price — high to low",wd:"Heaviest first"};
     openSheet(`<h3>Sort by</h3>
       ${Object.entries(sorts).map(([k,l])=>`<div class="opt${fSort===k?" on":""}" onclick="setSort('${k}')">${l}${fSort===k?IC.check:""}</div>`).join("")}
       <h3 style="margin-top:20px">Type</h3>
       <div class="opt${!fType?" on":""}" onclick="setType('')">All types${!fType?IC.check:""}</div>
-      ${types.map(t=>`<div class="opt${fType===t?" on":""}" onclick="setType('${t}')">${t}${fType===t?IC.check:""}</div>`).join("")}`);
+      ${types.map(t=>`<div class="opt${fType===t?" on":""}" data-v="${esc(t)}" onclick="setType(this.dataset.v)">${esc(t)}${fType===t?IC.check:""}</div>`).join("")}`);
   }
 };
 window.setSort=k=>{fSort=k;drawMarket();updDot();closeSheet();};
@@ -577,7 +614,7 @@ window.setType=t=>{fType=t;drawMarket();updDot();closeSheet();};
    ============================================================ */
 function saleCard(e){
   const v=V(e.ven), d=new Date(e.date+"T00:00:00");
-  return `<div class="salecard" onclick="openSale(${e.id})">
+  return `<div class="salecard" onclick="openSale('${e.id}')">
     <div class="thumb" style="background-image:url('${e.img||IMG.herd}')">
       <div class="datetag"><i>${d.toLocaleString("en-GB",{month:"short"})}</i><b>${d.getDate()}</b></div>
     </div>
@@ -590,6 +627,7 @@ function saleCard(e){
   </div>`;
 }
 function drawSales(){
+  if(!loaded.ev)return;
   let o=events.filter(e=>e.date>=TODAY);
   if(fSaleCat)o=o.filter(e=>e.cat===fSaleCat);
   if(fSaleVen)o=o.filter(e=>e.ven===fSaleVen);
@@ -614,12 +652,12 @@ window.openSale=id=>{
       </div>
       ${e.who?`<div class="dcard">
         <div class="drow">${IC.phone}<div><div class="k">Field officer</div><div class="v">${esc(e.who)}<br><a href="tel:${(e.tel||"").replace(/\s/g,"")}">${esc(e.tel)}</a></div></div></div>
-        ${e.em?`<div class="drow">${IC.mail}<div><div class="k">Email</div><div class="v"><a href="mailto:${e.em}">${esc(e.em)}</a></div></div></div>`:""}
+        ${e.em?`<div class="drow">${IC.mail}<div><div class="k">Email</div><div class="v"><a href="mailto:${esc(e.em)}">${esc(e.em)}</a></div></div></div>`:""}
       </div>`:""}
       ${e.note?`<div class="dnote">${esc(e.note)}</div>`:""}
       <div class="actions three">
         <a class="act primary" href="${icsFor(e)}" download="${e.title.replace(/[^a-z0-9]+/gi,"-").toLowerCase()}.ics">${IC.cal}Add to calendar</a>
-        ${v.map?`<a class="act" href="${v.map}" target="_blank" rel="noopener">${IC.nav}Directions</a>`:""}
+        ${v.map?`<a class="act" href="${/^https?:/.test(v.map)?esc(v.map):"#"}" target="_blank" rel="noopener">${IC.nav}Directions</a>`:""}
         ${e.tel?`<a class="act" href="tel:${e.tel.replace(/\s/g,"")}">${IC.phone}Call officer</a>`:""}
       </div>
       <div class="actions" style="grid-template-columns:1fr">
@@ -636,11 +674,11 @@ const kindTxt=l=>isHerd(l)?`Herd · ${l.qty} × ${esc(l.type)}`:esc(l.type);
 const wtTxt=l=>l.wt?" · "+(isHerd(l)?"avg ":"")+l.wt+" kg":"";
 function stockCard(l){
   return `<div class="stockcard">
-    <div class="ph" style="background-image:url('${l.img}')" onclick="openStock(${l.id})">
+    <div class="ph" style="background-image:url('${esc(l.img||IMG.herd)}')" onclick="openStock('${l.id}')">
       <span class="lot">${esc(l.lot)}</span>
     </div>
-    <button class="heart${saved.has(l.id)?" on":""}" onclick="fav(${l.id},event)" aria-label="Save">${IC.heart}</button>
-    <div class="body" onclick="openStock(${l.id})">
+    <button class="heart${saved.has(l.id)?" on":""}" onclick="fav('${l.id}',event)" aria-label="Save">${IC.heart}</button>
+    <div class="body" onclick="openStock('${l.id}')">
       <div class="top"><h3>${esc(l.breed)}</h3><span class="price">${money(l.price)}</span></div>
       <div class="sub">${kindTxt(l)}${wtTxt(l)} · ${esc(l.loc)}</div>
     </div>
@@ -653,7 +691,8 @@ window.fav=(id,ev)=>{
   drawChips();drawMarket();
 };
 function drawMarket(){
-  let o=stock.filter(s=>s.st==="live");
+  if(!loaded.live)return;
+  let o=[...liveL];
   const q=($("mktSearch").value||"").toLowerCase().trim();
   if(q)o=o.filter(s=>(s.breed+" "+s.type+" "+s.loc).toLowerCase().includes(q));
   if(fSavedOnly)o=o.filter(s=>saved.has(s.id));
@@ -662,7 +701,7 @@ function drawMarket(){
   if(fSort==="pa")o.sort((a,b)=>a.price-b.price);
   else if(fSort==="pd")o.sort((a,b)=>b.price-a.price);
   else if(fSort==="wd")o.sort((a,b)=>(b.wt||0)-(a.wt||0));
-  else o.sort((a,b)=>b.id-a.id);
+  else o.sort((a,b)=>ts(b)-ts(a));
   $("mktCount").textContent=o.length+" available";
   $("mktList").innerHTML=o.length?o.map(stockCard).join(""):
     `<div class="empty"><b>${fSavedOnly?"Nothing saved yet":"No stock matches"}</b>${fSavedOnly?"Tap the heart on any animal to save it.":"Try clearing your filters."}</div>`;
@@ -670,10 +709,10 @@ function drawMarket(){
 $("mktSearch").addEventListener("input",drawMarket);
 
 window.openStock=id=>{
-  const l=stock.find(x=>x.id===id); if(!l)return;
+  const l=allL().find(x=>x.id===id); if(!l)return;
   const wa=l.tel.replace(/[^\d]/g,"");
   pushDetail(l.lot,`
-    <div class="dhero" style="background-image:url('${l.img}')">
+    <div class="dhero" style="background-image:url('${esc(l.img||IMG.herd)}')">
       <div class="over"><span class="tagline" style="background:rgba(255,255,255,.9)">${kindTxt(l)}</span><h2>${esc(l.breed)}</h2></div>
     </div>
     <div class="dbody">
@@ -692,7 +731,7 @@ window.openStock=id=>{
       <div class="actions three">
         <a class="act primary" href="https://wa.me/${wa}" target="_blank" rel="noopener">${IC.chat}WhatsApp</a>
         <a class="act" href="tel:${wa}">${IC.phone}Call</a>
-        <button class="act" onclick="favD(${l.id})">${IC.heart}<span id="favLbl">${saved.has(l.id)?"Saved":"Save"}</span></button>
+        <button class="act" onclick="favD('${l.id}')">${IC.heart}<span id="favLbl">${saved.has(l.id)?"Saved":"Save"}</span></button>
       </div>
     </div>`);
 };
@@ -738,21 +777,41 @@ $("tm").onclick=()=>{const n=new Date();vy=n.getFullYear();vm=n.getMonth();pick(
 /* ============================================================
    SELL
    ============================================================ */
-let me=null;
+let me=null,isAdm=false,unMine=null,unPend=null;
+const AUTH_MSG={
+  "auth/invalid-credential":"Wrong email or password",
+  "auth/invalid-email":"That email address doesn't look right",
+  "auth/missing-password":"Enter your password",
+  "auth/email-already-in-use":"An account with this email already exists — log in instead",
+  "auth/weak-password":"Password needs at least 6 characters",
+  "auth/too-many-requests":"Too many attempts — try again in a few minutes",
+  "auth/network-request-failed":"No connection — check your signal"
+};
+const authErr=x=>AUTH_MSG[x.code]||"Couldn't sign in — "+(x.code||x.message);
 $("tIn").onclick=()=>{$("tIn").classList.add("on");$("tUp").classList.remove("on");$("doAuth").textContent="Log in";};
 $("tUp").onclick=()=>{$("tUp").classList.add("on");$("tIn").classList.remove("on");$("doAuth").textContent="Create account";};
-$("doAuth").onclick=()=>{
-  const e=$("aEmail").value.trim();
-  if(!e)return toast("Enter an email address",1);
-  me=e;$("sellAuth").style.display="none";$("sellMain").style.display="block";
-  drawMine();toast("Signed in as "+e);
+$("doAuth").onclick=async()=>{
+  const e=$("aEmail").value.trim(),p=$("aPass").value,up=$("tUp").classList.contains("on");
+  if(!e||!p)return toast("Enter your email and password",1);
+  $("doAuth").disabled=true;
+  try{
+    if(up){const c=await createUserWithEmailAndPassword(auth,e,p);sendEmailVerification(c.user).catch(()=>{});toast("Account created — welcome");}
+    else{await signInWithEmailAndPassword(auth,e,p);toast("Signed in as "+e);}
+    $("aPass").value="";
+  }catch(x){toast(authErr(x),1);}
+  finally{$("doAuth").disabled=false;}
 };
-$("doOut").onclick=()=>{me=null;$("sellMain").style.display="none";$("sellAuth").style.display="block";};
+$("doReset").onclick=async()=>{
+  const e=$("aEmail").value.trim();
+  if(!e)return toast("Enter your email above first",1);
+  try{await sendPasswordResetEmail(auth,e);toast("Reset link sent to "+e);}catch(x){toast(authErr(x),1);}
+};
+$("doOut").onclick=()=>signOut(auth);
 
 function drawMine(){
-  const m=stock.filter(s=>s.mine);
-  $("myList").innerHTML=m.length?m.map(l=>`<div class="rowitem" onclick="${l.st==="live"?`openStock(${l.id})`:""}">
-    <div class="th" style="background-image:url('${l.img}')"></div>
+  const m=[...mineL].sort((a,b)=>ts(b)-ts(a));
+  $("myList").innerHTML=m.length?m.map(l=>`<div class="rowitem" onclick="${l.st==="live"?`openStock('${l.id}')`:""}">
+    <div class="th" style="background-image:url('${esc(l.img||IMG.herd)}')"></div>
     <div class="info"><h4>${esc(l.breed)} — ${money(l.price)}</h4>
     <div class="m">${kindTxt(l)}${wtTxt(l)} · ${esc(l.loc)}</div></div>
     <span class="statuspill ${l.st}">${l.st==="live"?"Live":l.st==="pending"?"In review":"Declined"}</span>
@@ -778,7 +837,7 @@ $("openNew").onclick=()=>{
       <div class="fld"><label for="n_nm">Your name</label><input id="n_nm"></div>
       <div class="fld"><label for="n_ph">Phone / WhatsApp</label><input type="tel" id="n_ph" placeholder="+27 82 000 0000"></div>
     </div>
-    <button class="btn" onclick="submitListing()">Submit for review</button>
+    <button class="btn" id="n_go" onclick="submitListing()">Submit for review</button>
   </div>`);
 };
 window.setKind=h=>{
@@ -789,49 +848,86 @@ window.setKind=h=>{
   const mx=$("n_mixed");mx.hidden=mx.disabled=!h;
   if(!h&&$("n_type").value==="Mixed")$("n_type").selectedIndex=0;
 };
-window.submitListing=()=>{
+// Phone photos are 3–8 MB; Storage rules cap uploads at 3 MB. Resize and re-encode first.
+const shrink=f=>new Promise((ok,no)=>{
+  const u=URL.createObjectURL(f),i=new Image();
+  i.onload=()=>{
+    const k=Math.min(1,1600/Math.max(i.width,i.height)),c=document.createElement("canvas");
+    c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);
+    c.getContext("2d").drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);
+    c.toBlob(b=>b?ok(b):no(new Error("Couldn't read that photo")),"image/jpeg",.82);
+  };
+  i.onerror=()=>{URL.revokeObjectURL(u);no(new Error("Couldn't read that photo — try a JPEG or PNG"));};
+  i.src=u;
+});
+window.submitListing=async()=>{
+  if(!me)return toast("Log in first",1);
   const b=$("n_breed").value.trim(),p=$("n_pr").value,n=$("n_nm").value.trim(),ph=$("n_ph").value.trim();
   const herd=$("n_herd").classList.contains("on"),q=Math.floor(Number($("n_qty").value));
   if(!b||!p||!n||!ph)return toast("Fill in breed, price, name and phone",1);
   if(herd&&!(q>=2))return toast("Enter how many head are in the herd (2 or more)",1);
-  const f=$("n_img").files[0];
-  const done=img=>{
-    stock.push({id:++nid,lot:Math.random().toString(36).slice(2,7).toUpperCase(),breed:b,type:$("n_type").value,qty:herd?q:null,
+  if(!(Number(p)>0))return toast("Enter a price above zero",1);
+  const f=$("n_img").files[0],btn=$("n_go");
+  btn.disabled=true;btn.textContent=f?"Uploading photo…":"Submitting…";
+  try{
+    let img=null;
+    if(f){
+      const r=sref(storage,`listings/${me.uid}/${Date.now()}.jpg`);
+      await uploadBytes(r,await shrink(f),{contentType:"image/jpeg"});
+      img=await getDownloadURL(r);
+    }
+    await addDoc(collection(db,"listings"),{lot:Math.random().toString(36).slice(2,7).toUpperCase(),breed:b,type:$("n_type").value,qty:herd?q:null,
       wt:Number($("n_wt").value)||null,price:Number(p),loc:$("n_loc").value.trim()||"KZN",
-      desc:$("n_desc").value.trim()||"No description provided.",who:n,tel:ph,img:img||IMG.herd,st:"pending",mine:true});
-    history.back(); drawMine(); drawPend(); drawChips();
+      desc:$("n_desc").value.trim()||"No description provided.",who:n,tel:ph,img,
+      status:"pending",ownerUid:me.uid,createdAt:serverTimestamp()});
+    history.back();
     toast("Submitted — our office will review it");
-  };
-  if(f){const r=new FileReader();r.onload=()=>done(r.result);r.readAsDataURL(f);}else done(null);
+  }catch(x){
+    console.error(x);toast("Couldn't submit — "+(x.code||x.message),1);
+    btn.disabled=false;btn.textContent="Submit for review";
+  }
 };
 
 /* ============================================================
    ADMIN
    ============================================================ */
-$("doAdm").onclick=()=>{$("admAuth").style.display="none";$("admMain").style.display="block";refresh();toast("Signed in to admin");};
-$("admOut").onclick=()=>{$("admMain").style.display="none";$("admAuth").style.display="block";};
+$("doAdm").onclick=async()=>{
+  const e=$("adE").value.trim(),p=$("adP").value;
+  if(!e||!p)return toast("Enter your email and password",1);
+  if(!ADMIN_EMAILS.includes(e.toLowerCase()))return toast("That isn't an office account",1);
+  $("doAdm").disabled=true;
+  try{
+    const c=await signInWithEmailAndPassword(auth,e,p);$("adP").value="";
+    if(!c.user.emailVerified){sendEmailVerification(c.user).catch(()=>{});toast("Verify your email first — we've sent a link. Then log in again.",1);}
+    else{setUser(c.user);toast("Signed in to admin");}
+  }catch(x){toast(authErr(x),1);}
+  finally{$("doAdm").disabled=false;}
+};
+$("admOut").onclick=()=>signOut(auth);
 document.querySelectorAll("#admChips .chip").forEach(c=>c.onclick=()=>{
   document.querySelectorAll("#admChips .chip").forEach(x=>x.classList.remove("on"));
   c.classList.add("on");
   ["pend","ev","ven"].forEach(t=>$("a-"+t).style.display=(t===c.dataset.a)?"block":"none");
 });
 
+// Shown in admin empty states until the database has any sale yards or events.
+const seedBtn=()=>isAdm&&!venues.length&&!events.length?`<br><button class="btn ghost" style="margin-top:14px" onclick="seedDemo()">Load demo data</button>`:"";
 function drawPend(){
-  const p=stock.filter(s=>s.st==="pending");
+  const p=[...pendL].sort((a,b)=>ts(a)-ts(b));
   $("pendCount").textContent=p.length+" waiting";
   $("tabBadge").style.display=p.length?"grid":"none";
   $("tabBadge").textContent=p.length;
   $("pendList").innerHTML=p.length?p.map(l=>`<div class="rowitem">
-    <div class="th" style="background-image:url('${l.img}')"></div>
-    <div class="info"><h4>${esc(l.breed)} — ${money(l.price)}</h4>
+    <div class="th" style="background-image:url('${esc(l.img||IMG.herd)}')" onclick="openStock('${l.id}')"></div>
+    <div class="info" onclick="openStock('${l.id}')"><h4>${esc(l.breed)} — ${money(l.price)}</h4>
     <div class="m">${kindTxt(l)}${wtTxt(l)} · ${esc(l.who)}</div></div>
-    <div class="acts"><button class="btn sm" onclick="setSt(${l.id},'live')">Approve</button>
-    <button class="btn sm warn" onclick="setSt(${l.id},'rejected')">✕</button></div>
-  </div>`).join(""):`<div class="empty"><b>All clear</b>Nothing waiting for review.</div>`;
+    <div class="acts"><button class="btn sm" onclick="setSt('${l.id}','live')">Approve</button>
+    <button class="btn sm warn" onclick="setSt('${l.id}','rejected')">✕</button></div>
+  </div>`).join(""):`<div class="empty"><b>All clear</b>Nothing waiting for review.${seedBtn()}</div>`;
 }
-window.setSt=(id,st)=>{
-  const l=stock.find(x=>x.id===id); if(l)l.st=st;
-  drawPend();drawChips();drawMarket();drawMine();
+window.setSt=async(id,st)=>{
+  try{await updateDoc(doc(db,"listings",id),{status:st});}
+  catch(x){return toast("Couldn't update — "+(x.code||x.message),1);}
   toast(st==="live"?"Listing approved and live":"Listing declined");
 };
 
@@ -842,8 +938,8 @@ function drawEv(){
       <div class="dchip"><i>${d.toLocaleString("en-GB",{month:"short"})}</i><b>${d.getDate()}</b></div>
       <div class="info"><h4>${esc(e.title)}${past?'<span class="past">Past</span>':""}</h4>
       <div class="m">${esc(V(e.ven).name)}${e.start?" · "+t12(e.start):""}</div></div>
-      <div class="acts"><button class="btn sm ghost" onclick="editEv(${e.id})">Edit</button></div>
-    </div>`;}).join("")||`<div class="empty"><b>No events</b>Add your first sale event.</div>`;
+      <div class="acts"><button class="btn sm ghost" onclick="editEv('${e.id}')">Edit</button></div>
+    </div>`;}).join("")||`<div class="empty"><b>No events</b>Add your first sale event.${seedBtn()}</div>`;
 }
 function evForm(e){
   const E=e||{};
@@ -859,33 +955,36 @@ function evForm(e){
       <div class="fld"><label for="x_s">Start</label><input type="time" id="x_s" value="${E.start||""}"></div>
       <div class="fld"><label for="x_e">End</label><input type="time" id="x_e" value="${E.end||""}"></div>
     </div>
-    <div class="fld"><label for="x_v">Venue</label><select id="x_v">${venues.map(v=>`<option value="${v.id}"${E.ven===v.id?" selected":""}>${esc(v.name)}</option>`).join("")}</select></div>
+    <div class="fld"><label for="x_v">Venue</label><select id="x_v">${venues.map(v=>`<option value="${esc(v.id)}"${E.ven===v.id?" selected":""}>${esc(v.name)}</option>`).join("")}</select></div>
     <div class="duo">
       <div class="fld"><label for="x_wn">Field officer</label><input id="x_wn" value="${esc(E.who||"")}" placeholder="Ed Cadle"></div>
       <div class="fld"><label for="x_wp">Phone</label><input type="tel" id="x_wp" value="${esc(E.tel||"")}" placeholder="082 802 7540"></div>
     </div>
     <div class="fld"><label for="x_we">Email</label><input type="email" id="x_we" value="${esc(E.em||"")}"></div>
     <div class="fld"><label for="x_n">Sale notes</label><textarea id="x_n" placeholder="Lot count, catalogue, entry deadline…">${esc(E.note||"")}</textarea></div>
-    <button class="btn" onclick="saveEv(${E.id||0})">${E.id?"Save changes":"Add event"}</button>
-    ${E.id?`<button class="btn warn" style="margin-top:10px" onclick="delEv(${E.id})">Delete event</button>`:""}
+    <button class="btn" onclick="saveEv('${E.id||""}')">${E.id?"Save changes":"Add event"}</button>
+    ${E.id?`<button class="btn warn" style="margin-top:10px" onclick="delEv('${E.id}')">Delete event</button>`:""}
   </div>`;
 }
 $("newEv").onclick=()=>pushDetail("Add sale event",evForm(null));
 window.editEv=id=>pushDetail("Edit sale event",evForm(events.find(e=>e.id===id)));
-window.saveEv=id=>{
-  const t=$("x_t").value.trim(),d=$("x_d").value,v=Number($("x_v").value);
+window.saveEv=async id=>{
+  const t=$("x_t").value.trim(),d=$("x_d").value,v=$("x_v").value;
   if(!t||!d||!v)return toast("Add a title, date and venue",1);
   const data={title:t,cat:$("x_c").value,date:d,start:$("x_s").value,end:$("x_e").value,ven:v,
     who:$("x_wn").value.trim(),tel:$("x_wp").value.trim(),em:$("x_we").value.trim(),note:$("x_n").value.trim()};
-  if(id){Object.assign(events.find(e=>e.id===id),data);toast("Event updated");}
-  else{events.push({id:++nid,img:IMG.herd,...data});toast("Event added to the calendar");}
-  history.back();
+  try{
+    if(id)await updateDoc(doc(db,"events",id),data);
+    else await addDoc(collection(db,"events"),{img:IMG.herd,...data,createdAt:serverTimestamp()});
+  }catch(x){return toast("Couldn't save — "+(x.code||x.message),1);}
+  history.back();toast(id?"Event updated":"Event added to the calendar");
   const dt=new Date(d+"T00:00:00");vy=dt.getFullYear();vm=dt.getMonth();
-  refresh();pick(d);
+  pick(d);
 };
-window.delEv=id=>{
+window.delEv=async id=>{
   if(!confirm("Delete this sale event?"))return;
-  events=events.filter(e=>e.id!==id);history.back();refresh();toast("Event deleted");
+  try{await deleteDoc(doc(db,"events",id));}catch(x){return toast("Couldn't delete — "+(x.code||x.message),1);}
+  history.back();toast("Event deleted");
 };
 
 function drawVen(){
@@ -893,8 +992,8 @@ function drawVen(){
     const n=events.filter(e=>e.ven===v.id&&e.date>=TODAY).length;
     return `<div class="rowitem">
       <div class="info"><h4>${esc(v.name)}</h4><div class="m">${esc(v.town)} · ${n} upcoming</div></div>
-      <div class="acts"><button class="btn sm ghost" onclick="editVen(${v.id})">Edit</button></div>
-    </div>`;}).join("")||`<div class="empty"><b>No sale yards</b>Add your first venue.</div>`;
+      <div class="acts"><button class="btn sm ghost" onclick="editVen('${v.id}')">Edit</button></div>
+    </div>`;}).join("")||`<div class="empty"><b>No sale yards</b>Add your first venue.${seedBtn()}</div>`;
 }
 function venForm(v){
   const V0=v||{};
@@ -904,24 +1003,37 @@ function venForm(v){
     <div class="fld"><label for="y_c">Office contact</label><input type="tel" id="y_c" value="${esc(V0.contact||"")}"></div>
     <div class="fld"><label for="y_m">Google Maps link</label><input id="y_m" value="${esc(V0.map||"")}" placeholder="https://maps.google.com/…"><div class="hint">Powers the Directions button on every sale here.</div></div>
     <div class="fld"><label for="y_o">Facilities / notes</label><input id="y_o" value="${esc(V0.note||"")}" placeholder="Certified scale, covered pens"></div>
-    <button class="btn" onclick="saveVen(${V0.id||0})">${V0.id?"Save changes":"Add venue"}</button>
-    ${V0.id?`<button class="btn warn" style="margin-top:10px" onclick="delVen(${V0.id})">Delete venue</button>`:""}
+    <button class="btn" onclick="saveVen('${V0.id||""}')">${V0.id?"Save changes":"Add venue"}</button>
+    ${V0.id?`<button class="btn warn" style="margin-top:10px" onclick="delVen('${V0.id}')">Delete venue</button>`:""}
   </div>`;
 }
 $("newVen").onclick=()=>pushDetail("Add sale yard",venForm(null));
 window.editVen=id=>pushDetail("Edit sale yard",venForm(venues.find(v=>v.id===id)));
-window.saveVen=id=>{
+window.saveVen=async id=>{
   const n=$("y_n").value.trim(),t=$("y_t").value.trim();
   if(!n||!t)return toast("Add a yard name and town",1);
   const d={name:n,town:t,contact:$("y_c").value.trim(),map:$("y_m").value.trim(),note:$("y_o").value.trim()};
-  if(id){Object.assign(venues.find(v=>v.id===id),d);toast("Yard updated");}
-  else{venues.push({id:++nid,...d});toast("Yard added");}
-  history.back();refresh();
+  try{
+    if(id)await updateDoc(doc(db,"venues",id),d);
+    else await addDoc(collection(db,"venues"),{...d,createdAt:serverTimestamp()});
+  }catch(x){return toast("Couldn't save — "+(x.code||x.message),1);}
+  history.back();toast(id?"Yard updated":"Yard added");
 };
-window.delVen=id=>{
+window.delVen=async id=>{
   const u=events.filter(e=>e.ven===id).length;
   if(!confirm(u?`${u} sale event${u===1?"":"s"} use this yard. Delete anyway?`:"Delete this sale yard?"))return;
-  venues=venues.filter(v=>v.id!==id);history.back();refresh();toast("Yard deleted");
+  try{await deleteDoc(doc(db,"venues",id));}catch(x){return toast("Couldn't delete — "+(x.code||x.message),1);}
+  history.back();toast("Yard deleted");
+};
+
+// One-off: copy the starter yards, events and listings into an empty database.
+window.seedDemo=async()=>{
+  if(!isAdm||!confirm("Load the demo sale yards, events and listings?"))return;
+  const b=writeBatch(db),vid={};
+  SEED_VENUES.forEach(({id,...v})=>{const r=doc(collection(db,"venues"));vid[id]=r.id;b.set(r,{...v,createdAt:serverTimestamp()});});
+  SEED_EVENTS.forEach(({id,ven,...e})=>b.set(doc(collection(db,"events")),{...e,ven:vid[ven],createdAt:serverTimestamp()}));
+  SEED_STOCK.forEach(({id,st,mine,...l})=>b.set(doc(collection(db,"listings")),{qty:null,...l,status:st,ownerUid:me.uid,createdAt:serverTimestamp()}));
+  try{await b.commit();toast("Demo data loaded");}catch(x){toast("Couldn't load demo data — "+(x.code||x.message),1);}
 };
 
 /* ============================================================
@@ -952,10 +1064,27 @@ function refresh(){drawChips();drawSales();drawMarket();drawCal();drawEv();drawV
 
 function skeleton(){
   const s=`<div class="sk"><i class="a"></i><div class="b"><i style="width:60%"></i><i style="width:85%"></i><i style="width:40%"></i></div></div>`;
-  $("saleList").innerHTML=s+s+s;
+  $("saleList").innerHTML=$("mktList").innerHTML=s+s+s;
 }
 skeleton();
-setTimeout(()=>{refresh();pick(TODAY);go("sales");},650);
+go("sales");pick(TODAY);
+
+// Public data — each listener redraws only what depends on it.
+listen(collection(db,"venues"),r=>{venues=r;loaded.ven=true;drawChips();drawSales();drawEv();drawVen();drawPend();if(sel)pick(sel);});
+listen(collection(db,"events"),r=>{events=r;loaded.ev=true;drawSales();drawEv();drawVen();drawPend();if(sel)pick(sel);});
+listen(query(collection(db,"listings"),where("status","==","live")),r=>{liveL=r;loaded.live=true;drawChips();drawMarket();});
+
+// Per-user data. Listeners are torn down on every auth change so nothing outlives its session.
+function setUser(u){
+  me=u;isAdm=!!u&&u.emailVerified&&ADMIN_EMAILS.includes((u.email||"").toLowerCase());
+  $("sellAuth").style.display=u?"none":"block";$("sellMain").style.display=u?"block":"none";
+  $("admAuth").style.display=isAdm?"none":"block";$("admMain").style.display=isAdm?"block":"none";
+  if(unMine)unMine();if(unPend)unPend();unMine=unPend=null;mineL=[];pendL=[];
+  if(u)unMine=listen(query(collection(db,"listings"),where("ownerUid","==",u.uid)),r=>{mineL=r;drawMine();});
+  if(isAdm)unPend=listen(query(collection(db,"listings"),where("status","==","pending")),r=>{pendL=r;drawPend();});
+  drawMine();drawPend();drawEv();drawVen();
+}
+onAuthStateChanged(auth,setUser);
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));

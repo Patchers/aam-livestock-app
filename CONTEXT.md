@@ -7,13 +7,16 @@ An installable PWA for a livestock auctioneering business in the KZN Midlands, S
 Three audiences in one app: buyers browsing sales and stock, farmers listing animals,
 and the office approving those listings.
 
-Currently a **fully working front end with hardcoded demo data**. The job is to replace
-that demo data with Firebase, without changing the UX.
+Wired to Firebase (Auth, Firestore, Storage). Currently in a **testing phase**: the client's staff
+try it out while the developer stays the only admin. Going live is configuration, not a rebuild —
+swap the admin emails, clear test data, and transfer project ownership/billing.
 
 ## Files
 - `index.html` — the entire app: markup, CSS, and JS in one file
 - `manifest.json` — PWA install metadata
-- `sw.js` — service worker, caches the app shell
+- `sw.js` — service worker, caches the app shell (same-origin + Firebase SDK only)
+- `firestore.rules`, `storage.rules` — **source of truth** for security rules; paste into the
+  Firebase console (no CLI deploy is set up)
 - `icon-*.png` — home screen icons
 
 ## Architecture decisions (settled — don't revisit)
@@ -92,63 +95,28 @@ Two things about that snippet as Firebase hands it to you:
 The `apiKey` is a public identifier, not a credential. It ships in the client of every
 Firebase web app. Security is entirely in the rules below.
 
-## Firestore rules — write these BEFORE wiring any reads
-Production mode defaults to deny-all. Skip this and the app renders perfectly and shows
-nothing, which looks like a data bug and isn't.
+## Firestore rules — `firestore.rules`
+Production mode defaults to deny-all. Skip publishing the rules and the app renders perfectly and
+shows nothing, which looks like a data bug and isn't.
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function isAdmin() {
-      return request.auth != null
-        && request.auth.token.email in ['REPLACE_WITH_ADMIN_EMAIL'];
-    }
-
-    match /listings/{id} {
-      allow read: if resource.data.status == 'live'
-        || (request.auth != null && request.auth.uid == resource.data.ownerUid)
-        || isAdmin();
-      allow create: if request.auth != null
-        && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.status == 'pending';
-      allow update, delete: if isAdmin()
-        || (request.auth != null
-            && request.auth.uid == resource.data.ownerUid
-            && request.resource.data.status == resource.data.status);
-    }
-
-    match /events/{id}  { allow read: if true; allow write: if isAdmin(); }
-    match /venues/{id}  { allow read: if true; allow write: if isAdmin(); }
-  }
-}
-```
+Beyond the original design, the rules file adds:
+- `isAdmin()` also requires `email_verified` — otherwise anyone could sign up with an admin
+  address first. Admin = `johnchutton@gmail.com` during testing.
+- `validListing()` type-checks `price`, `wt`, `qty` and restricts `img` to Storage URLs, because
+  those values are rendered into the page.
+- Admins may create listings in any status (used by the one-off "Load demo data" button).
 
 **The gotcha that catches everyone:** rules do not filter queries, they validate them.
 `getDocs(collection(db,'listings'))` fails outright even though some documents are public.
 The query must itself constrain to what the rules allow:
 `query(collection(db,'listings'), where('status','==','live'))`.
 
-## Storage rules
-```
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /listings/{userId}/{file} {
-      allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.size < 3 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
-    }
-  }
-}
-```
+## Storage rules — `storage.rules`
+Uploads go to `listings/{uid}/…`, images only, under 3 MB.
 The 3 MB ceiling means client-side compression is mandatory, not optional — phone photos
 routinely exceed it. Resize to ~1600px on the long edge and re-encode as JPEG before upload.
 
-## What to wire up
+## What was wired up (done)
 1. Firebase init + config at the top of the script block.
 2. Auth: replace the fake login on the Sell and Admin tabs with real
    `signInWithEmailAndPassword` / `createUserWithEmailAndPassword`.

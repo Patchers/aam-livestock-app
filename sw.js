@@ -1,4 +1,4 @@
-const CACHE = 'aam-v2';
+const CACHE = 'aam-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -13,7 +13,11 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const u = new URL(e.request.url);
+  // Cache the app shell and the versioned Firebase SDK files only. Firestore, Auth and
+  // Storage traffic must always go to the network — caching it breaks live updates.
   if (e.request.method !== 'GET') return;
+  if (u.origin !== location.origin && !u.href.startsWith('https://www.gstatic.com/firebasejs/')) return;
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       const copy = res.clone();
