@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<title>AAM Livestock</title>
+<meta name="theme-color" content="#22392F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AAM Livestock">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F3F0; --card:#FFFFFF;
+  --ink:#181C19; --soft:#6A6F6B; --faint:#9DA29E;
+  --line:#E5E3DE; --hair:#EFEEEA;
+  --green:#22392F; --green2:#3A5A4A; --gold:#A8813C;
+  --red:#9A3B2C;
+  --fd:'Jost',-apple-system,sans-serif;
+  --fb:'Inter',-apple-system,sans-serif;
+  --bar:60px;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%}
+button{font-family:var(--fb);border:none;background:none;color:inherit;cursor:pointer}
+h1,h2,h3,h4{font-family:var(--fd);font-weight:500;margin:0;line-height:1.25}
+.eyebrow{font-family:var(--fd);font-size:.63rem;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);font-weight:500}
+.mono{font-family:var(--fd)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+/* ============ SHELL ============ */
+.app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:520px;margin:0 auto;background:var(--bg);box-shadow:0 0 60px rgba(0,0,0,.09)}
+
+.appbar{
+  flex:none;background:var(--green);color:#fff;
+  padding:calc(var(--sat) + 10px) 8px 10px;
+  display:flex;align-items:center;gap:4px;user-select:none;z-index:20;
+}
+.appbar h1{font-size:1.06rem;font-weight:500;flex:1;padding-left:8px;letter-spacing:.01em}
+.abtn{width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:#fff;flex:none;transition:background .15s}
+.abtn:active{background:rgba(255,255,255,.16)}
+.abtn svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.dot-live{width:7px;height:7px;border-radius:50%;background:var(--gold);position:absolute;top:9px;right:9px}
+
+.screens{flex:1;position:relative;overflow:hidden}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 0 22px;display:none}
+.screen.on{display:block}
+
+.tabbar{
+  flex:none;background:#fff;border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);
+  padding-bottom:var(--sab);user-select:none;z-index:20;
+}
+.tab{height:var(--bar);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--faint);position:relative;transition:color .15s}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tab span{font-family:var(--fd);font-size:.6rem;letter-spacing:.05em;text-transform:uppercase}
+.tab.on{color:var(--green)}
+.tab.on svg{stroke-width:2}
+.tab:active{transform:scale(.93)}
+.badge{position:absolute;top:7px;right:calc(50% - 20px);background:var(--gold);color:#fff;font-family:var(--fd);font-size:.58rem;min-width:16px;height:16px;border-radius:8px;display:grid;place-items:center;padding:0 4px}
+
+/* ============ PULL TO REFRESH ============ */
+.ptr{position:absolute;top:0;left:0;right:0;height:0;display:grid;place-items:center;overflow:hidden;z-index:5;color:var(--faint)}
+.ptr svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+.ptr.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============ CHIPS ============ */
+.chiprow{display:flex;gap:7px;overflow-x:auto;padding:12px 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chiprow::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 14px;border-radius:16px;background:#fff;border:1px solid var(--line);font-size:.8rem;color:var(--soft);white-space:nowrap;transition:all .15s}
+.chip:active{transform:scale(.95)}
+.chip.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:500}
+
+.searchwrap{padding:0 16px 4px}
+.search{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:0 13px}
+.search svg{width:17px;height:17px;stroke:var(--faint);fill:none;stroke-width:1.8;flex:none}
+.search input{flex:1;border:none;background:none;padding:12px 0;font-size:.92rem;font-family:var(--fb);color:var(--ink);outline:none}
+.search input::placeholder{color:var(--faint)}
+
+.sechead{padding:16px 16px 9px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.sechead .n{font-family:var(--fd);font-size:.72rem;color:var(--faint);letter-spacing:.05em}
+
+/* ============ CARDS ============ */
+.list{padding:0 16px;display:flex;flex-direction:column;gap:12px}
+
+.salecard{background:var(--card);border-radius:14px;overflow:hidden;display:flex;transition:transform .12s;box-shadow:0 1px 2px rgba(24,28,25,.05)}
+.salecard:active{transform:scale(.985)}
+.salecard .thumb{width:104px;flex:none;background:#D8D5CE center/cover no-repeat;position:relative}
+.salecard .datetag{position:absolute;left:0;top:0;background:var(--green);color:#fff;padding:6px 0;width:44px;text-align:center;font-family:var(--fd);line-height:1.05;border-bottom-right-radius:10px}
+.salecard .datetag i{display:block;font-style:normal;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.salecard .datetag b{display:block;font-size:1.1rem;font-weight:500}
+.salecard .body{flex:1;padding:13px 14px;min-width:0}
+.salecard h3{font-size:1rem;margin-bottom:5px}
+.salecard .meta{font-size:.79rem;color:var(--soft);display:flex;gap:5px;align-items:center;margin-bottom:2px}
+.salecard .meta svg{width:13px;height:13px;stroke:var(--faint);fill:none;stroke-width:1.8;flex:none}
+.tagline{display:inline-block;font-family:var(--fd);font-size:.58rem;text-transform:uppercase;letter-spacing:.13em;padding:3px 8px;border-radius:4px;background:var(--hair);color:var(--soft);margin-bottom:7px}
+.tagline.prod{background:#F6EEDF;color:var(--gold)}
+
+.stockcard{background:var(--card);border-radius:14px;overflow:hidden;transition:transform .12s;box-shadow:0 1px 2px rgba(24,28,25,.05);position:relative}
+.stockcard:active{transform:scale(.985)}
+.stockcard .ph{aspect-ratio:16/10;background:#D8D5CE center/cover no-repeat;position:relative}
+.stockcard .lot{position:absolute;top:9px;left:9px;background:rgba(24,28,25,.78);color:#fff;font-family:var(--fd);font-size:.6rem;letter-spacing:.1em;padding:4px 8px;border-radius:5px}
+.heart{position:absolute;top:7px;right:7px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.9);display:grid;place-items:center;z-index:3}
+.heart svg{width:18px;height:18px;stroke:var(--soft);fill:none;stroke-width:1.7}
+.heart.on svg{stroke:var(--red);fill:var(--red)}
+.heart:active{transform:scale(.88)}
+.stockcard .body{padding:12px 14px 14px}
+.stockcard .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:3px}
+.stockcard h3{font-size:1.02rem}
+.stockcard .price{font-family:var(--fd);font-size:1.02rem;font-weight:600;color:var(--green);white-space:nowrap}
+.stockcard .sub{font-size:.79rem;color:var(--soft)}
+
+.empty{margin:28px 16px;padding:40px 20px;text-align:center;color:var(--faint);font-size:.87rem;background:#fff;border-radius:14px}
+.empty b{display:block;font-family:var(--fd);font-weight:500;font-size:1.02rem;color:var(--ink);margin-bottom:5px}
+
+/* skeleton */
+.sk{background:#fff;border-radius:14px;height:104px;display:flex;overflow:hidden}
+.sk i{display:block;background:linear-gradient(90deg,#EDECE8 25%,#F6F5F2 50%,#EDECE8 75%);background-size:200% 100%;animation:sh 1.3s infinite}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk .a{width:104px;height:100%}
+.sk .b{flex:1;padding:15px 14px;display:flex;flex-direction:column;gap:9px}
+.sk .b i{height:11px;border-radius:4px}
+
+/* ============ CALENDAR ============ */
+.calwrap{background:#fff;margin:14px 16px;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(24,28,25,.05)}
+.caltop{display:flex;align-items:center;justify-content:space-between;padding:13px 10px 13px 16px}
+.caltop h3{font-size:1.02rem}
+.caltop .nav{display:flex;gap:2px}
+.caltop .nav button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--soft);font-size:1.1rem}
+.caltop .nav button:active{background:var(--hair)}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);padding:0 6px 4px}
+.dow span{text-align:center;font-family:var(--fd);font-size:.6rem;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+.days{display:grid;grid-template-columns:repeat(7,1fr);padding:0 6px 10px;gap:2px}
+.dcell{aspect-ratio:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--fd);font-size:.88rem;color:var(--ink);transition:background .12s}
+.dcell.blank{visibility:hidden}
+.dcell:active{background:var(--hair)}
+.dcell.today{color:var(--gold);font-weight:600;box-shadow:inset 0 0 0 1.5px var(--gold)}
+.dcell.sel{background:var(--green);color:#fff}
+.dcell.sel .dt{background:#fff}
+.dcell .dots{display:flex;gap:2.5px;height:4px}
+.dcell .dt{width:4px;height:4px;border-radius:50%;background:var(--gold)}
+.dayhead{padding:18px 16px 4px}
+.dayhead h3{font-size:1.18rem;margin-top:3px}
+
+/* ============ DETAIL STACK ============ */
+.detail{
+  position:fixed;inset:0;background:var(--bg);z-index:60;
+  max-width:520px;margin:0 auto;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .26s cubic-bezier(.32,.72,0,1);
+  visibility:hidden;
+}
+.detail.open{transform:translateX(0);visibility:visible}
+.detail .dbar{
+  flex:none;background:var(--green);color:#fff;padding:calc(var(--sat) + 10px) 8px 10px;
+  display:flex;align-items:center;gap:4px;
+}
+.detail .dbar h2{flex:1;font-size:1.02rem;font-weight:500;padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:calc(24px + var(--sab))}
+
+.dhero{aspect-ratio:16/10;background:#D8D5CE center/cover no-repeat;position:relative}
+.dhero .over{position:absolute;left:0;bottom:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(18,24,20,.8));color:#fff}
+.dhero .over h2{font-size:1.4rem;font-weight:500;margin-top:6px}
+.dbody{padding:18px 16px}
+.drow{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--hair);align-items:flex-start}
+.drow:last-child{border-bottom:none}
+.drow svg{width:18px;height:18px;stroke:var(--faint);fill:none;stroke-width:1.7;flex:none;margin-top:2px}
+.drow .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.11em;color:var(--faint);font-family:var(--fd);margin-bottom:2px}
+.drow .v{font-size:.94rem}
+.drow .v a{color:var(--green2)}
+.dnote{background:#fff;border-radius:12px;padding:15px;font-size:.9rem;color:var(--soft);margin-top:14px}
+.dcard{background:#fff;border-radius:14px;padding:4px 16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(24,28,25,.05)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}
+.actions.three{grid-template-columns:1fr 1fr 1fr}
+.act{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--fd);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--green);text-decoration:none;transition:transform .12s}
+.act:active{transform:scale(.95)}
+.act svg{width:20px;height:20px;stroke:var(--green);fill:none;stroke-width:1.7}
+.act.primary{background:var(--green);color:#fff;border-color:var(--green)}
+.act.primary svg{stroke:#fff}
+.bigprice{font-family:var(--fd);font-size:1.9rem;font-weight:600;color:var(--green);padding:4px 0 2px}
+
+/* ============ SHEET ============ */
+.scrim{position:fixed;inset:0;background:rgba(18,24,20,.42);z-index:70;opacity:0;visibility:hidden;transition:opacity .22s}
+.scrim.open{opacity:1;visibility:visible}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:71;background:#fff;
+  border-radius:18px 18px 0 0;max-width:520px;margin:0 auto;
+  padding:8px 16px calc(20px + var(--sab));
+  transform:translateY(100%);transition:transform .26s cubic-bezier(.32,.72,0,1);
+  max-height:82vh;overflow-y:auto;
+}
+.sheet.open{transform:translateY(0)}
+.grab{width:38px;height:4px;background:var(--line);border-radius:2px;margin:6px auto 14px}
+.sheet h3{font-size:1.1rem;margin-bottom:14px}
+.opt{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--hair);font-size:.95rem}
+.opt:last-of-type{border-bottom:none}
+.opt.on{color:var(--green);font-weight:600}
+.opt svg{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:2.2}
+
+/* ============ TOAST ============ */
+#toast{position:fixed;left:16px;right:16px;bottom:calc(var(--bar) + var(--sab) + 14px);z-index:90;max-width:488px;margin:0 auto;pointer-events:none}
+.toast{background:#181C19;color:#fff;border-radius:11px;padding:13px 16px;font-size:.87rem;box-shadow:0 8px 26px rgba(0,0,0,.24);transform:translateY(20px);opacity:0;transition:all .25s;display:flex;gap:9px;align-items:center}
+.toast.up{transform:translateY(0);opacity:1}
+.toast.err{background:var(--red)}
+.toast svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;flex:none}
+
+/* ============ FORMS ============ */
+.form{padding:4px 16px 20px}
+.fld{margin-bottom:15px}
+.fld label{display:block;font-family:var(--fd);font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin-bottom:6px}
+.fld .hint{font-size:.76rem;color:var(--faint);margin-top:5px}
+input,select,textarea{width:100%;font-family:var(--fb);font-size:16px;padding:13px 14px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);outline:none;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+textarea{min-height:88px;resize:vertical}
+select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236A6F6B' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 13px center;background-size:17px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.btn{width:100%;background:var(--green);color:#fff;border-radius:12px;padding:15px;font-family:var(--fd);font-size:.82rem;text-transform:uppercase;letter-spacing:.13em;font-weight:500;transition:transform .12s}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:#fff;color:var(--green);border:1px solid var(--line)}
+.btn.warn{background:#fff;color:var(--red);border:1px solid rgba(154,59,44,.3)}
+.btn.sm{width:auto;padding:9px 15px;font-size:.66rem;border-radius:9px}
+.seg{display:flex;background:var(--hair);border-radius:11px;padding:3px;margin-bottom:18px}
+.seg button{flex:1;padding:10px;border-radius:9px;font-family:var(--fd);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--soft)}
+.seg button.on{background:#fff;color:var(--green);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+
+.rowitem{background:#fff;border-radius:13px;padding:12px 14px;display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.rowitem .th{width:64px;height:52px;border-radius:9px;background:#D8D5CE center/cover no-repeat;flex:none}
+.rowitem .dchip{width:52px;flex:none;text-align:center;background:var(--green);color:#fff;border-radius:9px;padding:7px 0;font-family:var(--fd);line-height:1.05}
+.rowitem .dchip i{display:block;font-style:normal;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.rowitem .dchip b{display:block;font-size:1.02rem;font-weight:500}
+.rowitem .info{flex:1;min-width:0}
+.rowitem h4{font-size:.95rem;margin-bottom:2px}
+.rowitem .m{font-size:.76rem;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rowitem .acts{display:flex;gap:7px;flex:none}
+.past{font-family:var(--fd);font-size:.55rem;text-transform:uppercase;letter-spacing:.1em;background:var(--hair);color:var(--faint);padding:2px 6px;border-radius:4px;margin-left:6px}
+.statuspill{font-family:var(--fd);font-size:.58rem;text-transform:uppercase;letter-spacing:.11em;padding:3px 8px;border-radius:5px}
+.statuspill.pending{background:#F6EEDF;color:var(--gold)}
+.statuspill.live{background:#E7EFE9;color:var(--green)}
+.statuspill.rejected{background:#F7E9E6;color:var(--red)}
+.subhead{padding:20px 16px 8px;font-family:var(--fd);font-size:.66rem;text-transform:uppercase;letter-spacing:.13em;color:var(--faint)}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="appbar">
+    <button class="abtn" id="backOrLogo" aria-label="Menu">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <h1 id="barTitle">Sales</h1>
+    <button class="abtn" id="barSearch" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+    <button class="abtn" id="barFilter" aria-label="Filter" style="position:relative">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      <span class="dot-live" id="filterDot" style="display:none"></span>
+    </button>
+  </header>
+
+  <div class="screens">
+    <div class="ptr" id="ptr"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg></div>
+
+    <!-- ===== SALES ===== -->
+    <section class="screen on" id="s-sales">
+      <div class="chiprow" id="saleChips"></div>
+      <div class="sechead"><span class="eyebrow">Upcoming</span><span class="n" id="saleCount"></span></div>
+      <div class="list" id="saleList"></div>
+    </section>
+
+    <!-- ===== MARKET ===== -->
+    <section class="screen" id="s-market">
+      <div class="searchwrap" id="mktSearchWrap" style="display:none;padding-top:12px">
+        <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="mktSearch" placeholder="Search breed, type or area" autocomplete="off"></div>
+      </div>
+      <div class="chiprow" id="mktChips"></div>
+      <div class="sechead"><span class="eyebrow">Private treaty</span><span class="n" id="mktCount"></span></div>
+      <div class="list" id="mktList"></div>
+    </section>
+
+    <!-- ===== CALENDAR ===== -->
+    <section class="screen" id="s-cal">
+      <div class="calwrap">
+        <div class="caltop">
+          <h3 id="calMonth"></h3>
+          <div class="nav">
+            <button id="pm" aria-label="Previous month">‹</button>
+            <button id="tm" aria-label="Today" style="width:auto;padding:0 12px;font-family:var(--fd);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase">Today</button>
+            <button id="nm" aria-label="Next month">›</button>
+          </div>
+        </div>
+        <div class="dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        <div class="days" id="calDays"></div>
+      </div>
+      <div class="dayhead"><span class="eyebrow" id="dayLbl"></span><h3 id="dayTitle"></h3></div>
+      <div class="list" id="dayList"></div>
+    </section>
+
+    <!-- ===== SELL ===== -->
+    <section class="screen" id="s-sell">
+      <div id="sellAuth">
+        <div class="form" style="padding-top:22px">
+          <div class="seg"><button id="tIn" class="on">Log in</button><button id="tUp">Create account</button></div>
+          <div class="fld"><label for="aEmail">Email</label><input type="email" id="aEmail" value="farmer@example.co.za" autocomplete="email"></div>
+          <div class="fld"><label for="aPass">Password</label><input type="password" id="aPass" value="demo123"><div class="hint">Demo — any email and password works.</div></div>
+          <button class="btn" id="doAuth">Log in</button>
+        </div>
+      </div>
+      <div id="sellMain" style="display:none">
+        <div class="subhead">Your listings</div>
+        <div class="list" id="myList"></div>
+        <div class="form" style="padding-top:22px">
+          <button class="btn" id="openNew">＋ &nbsp;List an animal</button>
+          <button class="btn ghost" id="doOut" style="margin-top:10px">Log out</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ADMIN ===== -->
+    <section class="screen" id="s-admin">
+      <div id="admAuth">
+        <div class="form" style="padding-top:22px">
+          <div class="fld"><label for="adE">Email</label><input type="email" id="adE" value="office@example.co.za"></div>
+          <div class="fld"><label for="adP">Password</label><input type="password" id="adP" value="demo123"><div class="hint">Demo — any email and password works.</div></div>
+          <button class="btn" id="doAdm">Log in</button>
+        </div>
+      </div>
+      <div id="admMain" style="display:none">
+        <div class="chiprow" id="admChips">
+          <button class="chip on" data-a="pend">Approvals</button>
+          <button class="chip" data-a="ev">Sale events</button>
+          <button class="chip" data-a="ven">Sale yards</button>
+        </div>
+        <div id="a-pend">
+          <div class="sechead"><span class="eyebrow">Awaiting review</span><span class="n" id="pendCount"></span></div>
+          <div class="list" id="pendList"></div>
+        </div>
+        <div id="a-ev" style="display:none">
+          <div class="form" style="padding-top:6px"><button class="btn" id="newEv">＋ &nbsp;Add sale event</button></div>
+          <div class="subhead">All events</div>
+          <div class="list" id="evList"></div>
+        </div>
+        <div id="a-ven" style="display:none">
+          <div class="form" style="padding-top:6px"><button class="btn" id="newVen">＋ &nbsp;Add sale yard</button></div>
+          <div class="subhead">Sale yards</div>
+          <div class="list" id="venList"></div>
+        </div>
+        <div class="form"><button class="btn ghost" id="admOut">Log out</button></div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="tabbar">
+    <button class="tab on" data-s="sales"><svg viewBox="0 0 24 24"><path d="M3 7h18M6 7V4h12v3M5 7l1 13h12l1-13"/></svg><span>Sales</span></button>
+    <button class="tab" data-s="market"><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.2 10.5a1.5 1.5 0 01-1.5 1.5H6.7a1.5 1.5 0 01-1.5-1.5z"/><path d="M9 9V6a3 3 0 016 0v3"/></svg><span>Market</span></button>
+    <button class="tab" data-s="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Calendar</span></button>
+    <button class="tab" data-s="sell"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Sell</span></button>
+    <button class="tab" data-s="admin"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0115 0"/></svg><span>Admin</span><span class="badge" id="tabBadge" style="display:none">0</span></button>
+  </nav>
+</div>
+
+<!-- detail stack -->
+<div class="detail" id="detail">
+  <div class="dbar">
+    <button class="abtn" id="dBack" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2 id="dTitle"></h2>
+  </div>
+  <div class="dscroll" id="dScroll"></div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const U="https://images.unsplash.com/";
+const IMG={
+  winter:U+"photo-1500595046743-cd271d694d30?w=800&q=70",
+  herd:U+"photo-1516467508483-a7212febe31a?w=800&q=70",
+  angus:U+"photo-1548550023-2bdb3c5beed7?w=800&q=70",
+  nguni:U+"photo-1527153907021-9f0ce5c1e6f7?w=800&q=70",
+  dusk:U+"photo-1518288774672-b94e808873ff?w=800&q=70",
+  bull:U+"photo-1546445317-29f4545e9d53?w=800&q=70",
+  calf:U+"photo-1570042225831-d98fa7577f1e?w=800&q=70",
+  stud:U+"photo-1595456982104-14cc660c4d22?w=800&q=70"
+};
+
+let venues=[
+  {id:1,name:"Mooi River Sale Yard",town:"Mooi River, KZN",contact:"+27 33 263 1000",map:"https://maps.google.com/?q=Mooi+River+KZN",note:"Certified scale on site, covered pens. Entrance off the R103."},
+  {id:2,name:"Lions River Sale Yard",town:"Lions River, KZN",contact:"+27 33 263 1000",map:"https://maps.google.com/?q=Lions+River+KZN",note:"Weekly standard sales. Double-deck loading ramps."},
+  {id:3,name:"Estcourt Sale Yard",town:"Estcourt, KZN",contact:"+27 36 352 4000",map:"https://maps.google.com/?q=Estcourt+KZN",note:"Large holding capacity, catering on sale days."},
+  {id:4,name:"Nottingham Road Showgrounds",town:"Nottingham Road, KZN",contact:"+27 33 266 6100",map:"https://maps.google.com/?q=Nottingham+Road+KZN",note:"Production and stud sales, indoor arena."},
+  {id:5,name:"Bergville Sale Yard",town:"Bergville, KZN",contact:"+27 36 448 1000",map:"https://maps.google.com/?q=Bergville+KZN",note:"Monthly standard sale, open pens."}
+];
+const fd=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+let events=[
+  {id:1,title:"Mooi River Standard Sale",cat:"Standard Sale",date:fd(3),start:"10:00",end:"17:00",ven:1,img:IMG.winter,who:"Mike Bauer",tel:"084 407 3000",em:"mike@example.co.za",note:"Weaners, cows and oxen. Entries close two days before the sale."},
+  {id:2,title:"Mooi River Weaner Session",cat:"Standard Sale",date:fd(3),start:"14:00",end:"17:00",ven:1,img:IMG.calf,who:"Mike Bauer",tel:"084 407 3000",em:"mike@example.co.za",note:"Second session at the same yard, weaners only."},
+  {id:3,title:"Lions River Standard Sale",cat:"Standard Sale",date:fd(8),start:"10:00",end:"17:00",ven:2,img:IMG.nguni,who:"Ed Cadle",tel:"082 802 7540",em:"ed@example.co.za",note:""},
+  {id:4,title:"Stey Braes Production Sale",cat:"Production Sale",date:fd(16),start:"11:30",end:"17:00",ven:4,img:IMG.stud,who:"Ed Cadle",tel:"082 802 7540",em:"ed@example.co.za",note:"30 bulls and 50 females on offer. Digital catalogue available two weeks prior."},
+  {id:5,title:"Estcourt Standard Sale",cat:"Standard Sale",date:fd(24),start:"10:00",end:"17:00",ven:3,img:IMG.herd,who:"Gavin Matthews",tel:"074 419 3098",em:"gavin@example.co.za",note:""},
+  {id:6,title:"Bergville Standard Sale",cat:"Standard Sale",date:fd(31),start:"12:00",end:"17:00",ven:5,img:IMG.dusk,who:"Theron Conradie",tel:"083 776 4956",em:"theron@example.co.za",note:""},
+  {id:7,title:"KZN Bonsmara Club Sale",cat:"Production Sale",date:fd(45),start:"09:00",end:"16:00",ven:4,img:IMG.bull,who:"Ed Cadle",tel:"082 802 7540",em:"ed@example.co.za",note:"Multi-breeder club sale. Registered stud animals only."}
+];
+let stock=[
+  {id:1,lot:"BN0421",breed:"Bonsmara",type:"Bull",wt:780,price:42000,loc:"Mooi River, KZN",desc:"Proven breeding bull with an excellent temperament. Full vaccination record available, sound feet and legs, working well in a multi-sire herd.",who:"P. Naidoo",tel:"+27821234567",img:IMG.bull,st:"live",mine:false},
+  {id:2,lot:"NG1178",breed:"Nguni",type:"Cow",wt:410,price:16500,loc:"Estcourt, KZN",desc:"In calf, due September. Hardy and low maintenance, raised on sourveld with minimal supplementation.",who:"S. Mthembu",tel:"+27835551212",img:IMG.winter,st:"live",mine:false},
+  {id:3,lot:"BR0903",breed:"Brahman Cross",type:"Heifer",wt:355,price:14200,loc:"Howick, KZN",desc:"Well grown heifer, tick resistant and ready for first service. Dosed and vaccinated.",who:"D. van Wyk",tel:"+27824447788",img:IMG.herd,st:"live",mine:false},
+  {id:4,lot:"AN2260",breed:"Angus",type:"Steer",wt:520,price:23800,loc:"Nottingham Road, KZN",desc:"Grass fed and feedlot ready. Weighed on a certified farm scale last week.",who:"J. Barnes",tel:"+27829998877",img:IMG.angus,st:"live",mine:false},
+  {id:5,lot:"BN5512",breed:"Bonsmara",type:"Calf",wt:180,price:8900,loc:"Mooi River, KZN",desc:"Weaner calf, dehorned and dosed. Weaned three weeks ago and eating well.",who:"P. Naidoo",tel:"+27821234567",img:IMG.calf,st:"live",mine:false},
+  {id:6,lot:"NG7734",breed:"Nguni",type:"Ox",wt:610,price:27500,loc:"Bergville, KZN",desc:"Strong frame with a good condition score. Sold as one lot, quiet to handle.",who:"T. Zulu",tel:"+27736664455",img:IMG.nguni,st:"live",mine:false},
+  {id:7,lot:"DR0088",breed:"Drakensberger",type:"Cow",wt:465,price:19750,loc:"Winterton, KZN",desc:"Quiet cow with calf at foot. Selling as a pair, calf is a bull calf born in April.",who:"M. Ferreira",tel:"+27827773344",img:IMG.dusk,st:"pending",mine:true},
+  {id:8,lot:"SM4419",breed:"Simmentaler",type:"Bull",wt:820,price:51000,loc:"Greytown, KZN",desc:"Young bull, semen tested and passed. Registration papers available on request.",who:"K. Botha",tel:"+27825556699",img:IMG.stud,st:"pending",mine:false}
+];
+
+let saved=new Set();
+let nid=700;
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $=i=>document.getElementById(i);
+const esc=s=>{const d=document.createElement("div");d.textContent=s||"";return d.innerHTML;};
+const V=id=>venues.find(v=>v.id===id)||{name:"Venue to be confirmed",town:"",map:"",contact:""};
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const TODAY=iso(new Date());
+const t12=t=>{if(!t)return"";const[h,m]=t.split(":").map(Number);return `${h%12||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}`;};
+const dLong=d=>new Date(d+"T00:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+const dShort=d=>new Date(d+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+const rand=(a,b)=>{const t=[];for(let i=a;i<=b;i++)t.push(i);return t;};
+const money=n=>"R "+Number(n).toLocaleString("en-ZA");
+
+const IC={
+  clock:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  phone:'<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a1 1 0 01-1 1A16 16 0 014 5a1 1 0 011-1z"/></svg>',
+  mail:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  chat:'<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/></svg>',
+  nav:'<svg viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z"/></svg>',
+  scale:'<svg viewBox="0 0 24 24"><path d="M12 4v16M6 8h12M4 8l-2 6h4zM20 8l-2 6h4z"/></svg>',
+  tag:'<svg viewBox="0 0 24 24"><path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>',
+  heart:'<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.6-7-9.4A4 4 0 0112 8a4 4 0 017 2.6C19 15.4 12 20 12 20z"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>',
+  alert:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>'
+};
+
+function icsFor(e){
+  const v=V(e.ven), dt=s=>e.date.replace(/-/g,"")+"T"+(s||"09:00").replace(":","")+"00";
+  return "data:text/calendar;charset=utf-8,"+encodeURIComponent(
+    ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Midlands Livestock//EN","BEGIN:VEVENT",
+    "UID:"+e.id+"@midlands.demo","DTSTART:"+dt(e.start),"DTEND:"+dt(e.end||e.start),
+    "SUMMARY:"+e.title,"LOCATION:"+v.name+(v.town?", "+v.town:""),
+    "DESCRIPTION:"+(e.note||"").replace(/\n/g," "),"END:VEVENT","END:VCALENDAR"].join("\r\n"));
+}
+function gcalFor(e){
+  const v=V(e.ven), dt=s=>e.date.replace(/-/g,"")+"T"+(s||"09:00").replace(":","")+"00";
+  return "https://www.google.com/calendar/event?"+new URLSearchParams({action:"TEMPLATE",text:e.title,
+    dates:dt(e.start)+"/"+dt(e.end||e.start),location:v.name+(v.town?", "+v.town:""),details:e.note||""});
+}
+
+/* ---------- toast ---------- */
+let tTimer;
+function toast(msg,err){
+  const t=document.createElement("div");
+  t.className="toast"+(err?" err":"");
+  t.innerHTML=(err?IC.alert:IC.check)+"<span>"+esc(msg)+"</span>";
+  $("toast").innerHTML=""; $("toast").appendChild(t);
+  requestAnimationFrame(()=>t.classList.add("up"));
+  clearTimeout(tTimer);
+  tTimer=setTimeout(()=>{t.classList.remove("up");setTimeout(()=>t.remove(),300);},2600);
+}
+
+/* ---------- sheet ---------- */
+function openSheet(html){$("sheetBody").innerHTML=html;$("sheet").classList.add("open");$("scrim").classList.add("open");}
+function closeSheet(){$("sheet").classList.remove("open");$("scrim").classList.remove("open");}
+$("scrim").onclick=closeSheet;
+
+/* ---------- detail stack ---------- */
+let dOpen=false;
+function pushDetail(title,html){
+  $("dTitle").textContent=title;
+  $("dScroll").innerHTML=html;
+  $("dScroll").scrollTop=0;
+  $("detail").classList.add("open");
+  dOpen=true;
+  history.pushState({d:1},"");
+}
+function popDetail(){$("detail").classList.remove("open");dOpen=false;}
+$("dBack").onclick=()=>history.back();
+window.addEventListener("popstate",()=>{if(dOpen)popDetail();});
+
+/* ============================================================
+   TABS
+   ============================================================ */
+const TITLES={sales:"Sales",market:"Market",cal:"Calendar",sell:"Sell",admin:"Admin"};
+let screen="sales";
+function go(s){
+  screen=s;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.s===s));
+  document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("on",x.id==="s-"+s));
+  $("barTitle").textContent=TITLES[s];
+  $("barSearch").style.display=(s==="market")?"grid":"none";
+  $("barFilter").style.display=(s==="sales"||s==="market")?"grid":"none";
+  if(dOpen)history.back();
+}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.s));
+
+$("barSearch").onclick=()=>{
+  const w=$("mktSearchWrap");
+  const show=w.style.display==="none";
+  w.style.display=show?"block":"none";
+  if(show)$("mktSearch").focus(); else {$("mktSearch").value="";drawMarket();}
+};
+
+/* ============================================================
+   FILTERS
+   ============================================================ */
+let fSaleCat="", fSaleVen=0, fBreed="", fType="", fSort="new", fSavedOnly=false;
+
+function drawChips(){
+  const cats=["All sales","Standard Sale","Production Sale"];
+  $("saleChips").innerHTML=cats.map(c=>{
+    const val=c==="All sales"?"":c;
+    return `<button class="chip${fSaleCat===val?" on":""}" onclick="setCat('${val}')">${c}</button>`;
+  }).join("")+venues.map(v=>`<button class="chip${fSaleVen===v.id?" on":""}" onclick="setVen(${v.id})">${esc(v.name.replace(" Sale Yard","").replace(" Showgrounds",""))}</button>`).join("");
+
+  const breeds=[...new Set(stock.filter(s=>s.st==="live").map(s=>s.breed))].sort();
+  $("mktChips").innerHTML=
+    `<button class="chip${!fBreed&&!fType&&!fSavedOnly?" on":""}" onclick="clearMkt()">All stock</button>`+
+    `<button class="chip${fSavedOnly?" on":""}" onclick="toggleSaved()">♥ Saved${saved.size?" ("+saved.size+")":""}</button>`+
+    breeds.map(b=>`<button class="chip${fBreed===b?" on":""}" onclick="setBreed('${b}')">${b}</button>`).join("");
+}
+window.setCat=v=>{fSaleCat=fSaleCat===v?"":v;fSaleVen=0;drawChips();drawSales();updDot();};
+window.setVen=v=>{fSaleVen=fSaleVen===v?0:v;drawChips();drawSales();updDot();};
+window.setBreed=b=>{fBreed=fBreed===b?"":b;fSavedOnly=false;drawChips();drawMarket();updDot();};
+window.clearMkt=()=>{fBreed="";fType="";fSavedOnly=false;drawChips();drawMarket();updDot();};
+window.toggleSaved=()=>{fSavedOnly=!fSavedOnly;if(fSavedOnly)fBreed="";drawChips();drawMarket();updDot();};
+function updDot(){
+  const on=(screen==="sales"&&(fSaleCat||fSaleVen))||(screen==="market"&&(fBreed||fType||fSort!=="new"||fSavedOnly));
+  $("filterDot").style.display=on?"block":"none";
+}
+
+$("barFilter").onclick=()=>{
+  if(screen==="sales"){
+    openSheet(`<h3>Filter sales</h3>
+      ${["","Standard Sale","Production Sale"].map(c=>`<div class="opt${fSaleCat===c?" on":""}" onclick="setCat('${c}');closeSheet()">${c||"All sale types"}${fSaleCat===c?IC.check:""}</div>`).join("")}
+      <h3 style="margin-top:20px">Venue</h3>
+      <div class="opt${!fSaleVen?" on":""}" onclick="setVen(0);closeSheet()">All venues${!fSaleVen?IC.check:""}</div>
+      ${venues.map(v=>`<div class="opt${fSaleVen===v.id?" on":""}" onclick="setVen(${v.id});closeSheet()">${esc(v.name)}${fSaleVen===v.id?IC.check:""}</div>`).join("")}`);
+  }else{
+    const types=[...new Set(stock.filter(s=>s.st==="live").map(s=>s.type))].sort();
+    const sorts={new:"Most recent",pa:"Price — low to high",pd:"Price — high to low",wd:"Heaviest first"};
+    openSheet(`<h3>Sort by</h3>
+      ${Object.entries(sorts).map(([k,l])=>`<div class="opt${fSort===k?" on":""}" onclick="setSort('${k}')">${l}${fSort===k?IC.check:""}</div>`).join("")}
+      <h3 style="margin-top:20px">Type</h3>
+      <div class="opt${!fType?" on":""}" onclick="setType('')">All types${!fType?IC.check:""}</div>
+      ${types.map(t=>`<div class="opt${fType===t?" on":""}" onclick="setType('${t}')">${t}${fType===t?IC.check:""}</div>`).join("")}`);
+  }
+};
+window.setSort=k=>{fSort=k;drawMarket();updDot();closeSheet();};
+window.setType=t=>{fType=t;drawMarket();updDot();closeSheet();};
+
+/* ============================================================
+   SALES
+   ============================================================ */
+function saleCard(e){
+  const v=V(e.ven), d=new Date(e.date+"T00:00:00");
+  return `<div class="salecard" onclick="openSale(${e.id})">
+    <div class="thumb" style="background-image:url('${e.img||IMG.herd}')">
+      <div class="datetag"><i>${d.toLocaleString("en-GB",{month:"short"})}</i><b>${d.getDate()}</b></div>
+    </div>
+    <div class="body">
+      <span class="tagline ${e.cat==="Production Sale"?"prod":""}">${esc(e.cat)}</span>
+      <h3>${esc(e.title)}</h3>
+      <div class="meta">${IC.clock}<span>${e.start?t12(e.start):"Time TBC"}</span></div>
+      <div class="meta">${IC.pin}<span>${esc(v.name)}</span></div>
+    </div>
+  </div>`;
+}
+function drawSales(){
+  let o=events.filter(e=>e.date>=TODAY);
+  if(fSaleCat)o=o.filter(e=>e.cat===fSaleCat);
+  if(fSaleVen)o=o.filter(e=>e.ven===fSaleVen);
+  o.sort((a,b)=>a.date.localeCompare(b.date)||(a.start||"").localeCompare(b.start||""));
+  $("saleCount").textContent=o.length+" scheduled";
+  $("saleList").innerHTML=o.length?o.map(saleCard).join(""):
+    `<div class="empty"><b>No sales match</b>Try clearing your filters.</div>`;
+}
+
+window.openSale=id=>{
+  const e=events.find(x=>x.id===id); if(!e)return;
+  const v=V(e.ven);
+  pushDetail(e.cat,`
+    <div class="dhero" style="background-image:url('${e.img||IMG.herd}')">
+      <div class="over"><span class="tagline ${e.cat==="Production Sale"?"prod":""}" style="background:rgba(255,255,255,.9)">${esc(e.cat)}</span><h2>${esc(e.title)}</h2></div>
+    </div>
+    <div class="dbody">
+      <div class="dcard">
+        <div class="drow">${IC.cal}<div><div class="k">Date</div><div class="v">${dLong(e.date)}</div></div></div>
+        <div class="drow">${IC.clock}<div><div class="k">Time</div><div class="v">${e.start?t12(e.start)+(e.end?" – "+t12(e.end):""):"To be confirmed"}</div></div></div>
+        <div class="drow">${IC.pin}<div><div class="k">Venue</div><div class="v">${esc(v.name)}<br><span style="color:var(--faint);font-size:.86rem">${esc(v.town)}</span></div></div></div>
+      </div>
+      ${e.who?`<div class="dcard">
+        <div class="drow">${IC.phone}<div><div class="k">Field officer</div><div class="v">${esc(e.who)}<br><a href="tel:${(e.tel||"").replace(/\s/g,"")}">${esc(e.tel)}</a></div></div></div>
+        ${e.em?`<div class="drow">${IC.mail}<div><div class="k">Email</div><div class="v"><a href="mailto:${e.em}">${esc(e.em)}</a></div></div></div>`:""}
+      </div>`:""}
+      ${e.note?`<div class="dnote">${esc(e.note)}</div>`:""}
+      <div class="actions three">
+        <a class="act primary" href="${icsFor(e)}" download="${e.title.replace(/[^a-z0-9]+/gi,"-").toLowerCase()}.ics">${IC.cal}Add to calendar</a>
+        ${v.map?`<a class="act" href="${v.map}" target="_blank" rel="noopener">${IC.nav}Directions</a>`:""}
+        ${e.tel?`<a class="act" href="tel:${e.tel.replace(/\s/g,"")}">${IC.phone}Call officer</a>`:""}
+      </div>
+      <div class="actions" style="grid-template-columns:1fr">
+        <a class="act" href="${gcalFor(e)}" target="_blank" rel="noopener">${IC.cal}Add to Google Calendar</a>
+      </div>
+    </div>`);
+};
+
+/* ============================================================
+   MARKET
+   ============================================================ */
+function stockCard(l){
+  return `<div class="stockcard">
+    <div class="ph" style="background-image:url('${l.img}')" onclick="openStock(${l.id})">
+      <span class="lot">${esc(l.lot)}</span>
+    </div>
+    <button class="heart${saved.has(l.id)?" on":""}" onclick="fav(${l.id},event)" aria-label="Save">${IC.heart}</button>
+    <div class="body" onclick="openStock(${l.id})">
+      <div class="top"><h3>${esc(l.breed)}</h3><span class="price">${money(l.price)}</span></div>
+      <div class="sub">${esc(l.type)}${l.wt?" · "+l.wt+" kg":""} · ${esc(l.loc)}</div>
+    </div>
+  </div>`;
+}
+window.fav=(id,ev)=>{
+  ev.stopPropagation();
+  if(saved.has(id)){saved.delete(id);toast("Removed from saved");}
+  else{saved.add(id);toast("Saved to your list");}
+  drawChips();drawMarket();
+};
+function drawMarket(){
+  let o=stock.filter(s=>s.st==="live");
+  const q=($("mktSearch").value||"").toLowerCase().trim();
+  if(q)o=o.filter(s=>(s.breed+" "+s.type+" "+s.loc).toLowerCase().includes(q));
+  if(fSavedOnly)o=o.filter(s=>saved.has(s.id));
+  if(fBreed)o=o.filter(s=>s.breed===fBreed);
+  if(fType)o=o.filter(s=>s.type===fType);
+  if(fSort==="pa")o.sort((a,b)=>a.price-b.price);
+  else if(fSort==="pd")o.sort((a,b)=>b.price-a.price);
+  else if(fSort==="wd")o.sort((a,b)=>(b.wt||0)-(a.wt||0));
+  else o.sort((a,b)=>b.id-a.id);
+  $("mktCount").textContent=o.length+" available";
+  $("mktList").innerHTML=o.length?o.map(stockCard).join(""):
+    `<div class="empty"><b>${fSavedOnly?"Nothing saved yet":"No stock matches"}</b>${fSavedOnly?"Tap the heart on any animal to save it.":"Try clearing your filters."}</div>`;
+}
+$("mktSearch").addEventListener("input",drawMarket);
+
+window.openStock=id=>{
+  const l=stock.find(x=>x.id===id); if(!l)return;
+  const wa=l.tel.replace(/[^\d]/g,"");
+  pushDetail(l.lot,`
+    <div class="dhero" style="background-image:url('${l.img}')">
+      <div class="over"><span class="tagline" style="background:rgba(255,255,255,.9)">${esc(l.type)}</span><h2>${esc(l.breed)}</h2></div>
+    </div>
+    <div class="dbody">
+      <div class="bigprice">${money(l.price)}</div>
+      <div class="dcard" style="margin-top:12px">
+        <div class="drow">${IC.tag}<div><div class="k">Lot number</div><div class="v">${esc(l.lot)}</div></div></div>
+        ${l.wt?`<div class="drow">${IC.scale}<div><div class="k">Weight</div><div class="v">${l.wt} kg</div></div></div>`:""}
+        <div class="drow">${IC.pin}<div><div class="k">Location</div><div class="v">${esc(l.loc)}</div></div></div>
+      </div>
+      <div class="dnote">${esc(l.desc)}</div>
+      <div class="dcard" style="margin-top:14px">
+        <div class="drow">${IC.phone}<div><div class="k">Seller</div><div class="v">${esc(l.who)}<br><a href="tel:${wa}">${esc(l.tel)}</a></div></div></div>
+      </div>
+      <div class="actions three">
+        <a class="act primary" href="https://wa.me/${wa}" target="_blank" rel="noopener">${IC.chat}WhatsApp</a>
+        <a class="act" href="tel:${wa}">${IC.phone}Call</a>
+        <button class="act" onclick="favD(${l.id})">${IC.heart}<span id="favLbl">${saved.has(l.id)?"Saved":"Save"}</span></button>
+      </div>
+    </div>`);
+};
+window.favD=id=>{
+  if(saved.has(id)){saved.delete(id);toast("Removed from saved");}else{saved.add(id);toast("Saved to your list");}
+  const el=$("favLbl"); if(el)el.textContent=saved.has(id)?"Saved":"Save";
+  drawChips();drawMarket();
+};
+
+/* ============================================================
+   CALENDAR
+   ============================================================ */
+let vy,vm,sel=TODAY;
+(()=>{const n=new Date();vy=n.getFullYear();vm=n.getMonth();})();
+const on=d=>events.filter(e=>e.date===d).sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+
+function drawCal(){
+  const first=new Date(vy,vm,1),dim=new Date(vy,vm+1,0).getDate(),off=(first.getDay()+6)%7;
+  $("calMonth").textContent=first.toLocaleString("en-GB",{month:"long",year:"numeric"});
+  let h="";
+  for(let i=0;i<off;i++)h+=`<div class="dcell blank"></div>`;
+  for(const d of rand(1,dim)){
+    const ds=iso(new Date(vy,vm,d)),ev=on(ds),c=["dcell"];
+    if(ds===TODAY)c.push("today"); if(ds===sel)c.push("sel");
+    h+=`<button class="${c.join(" ")}" onclick="pick('${ds}')" aria-label="${d}, ${ev.length} sales">
+      <span>${d}</span><span class="dots">${ev.slice(0,3).map(()=>`<i class="dt"></i>`).join("")}</span></button>`;
+  }
+  $("calDays").innerHTML=h;
+}
+window.pick=ds=>{
+  sel=ds;
+  $("dayLbl").textContent=new Date(ds+"T00:00:00").toLocaleDateString("en-GB",{weekday:"long"});
+  $("dayTitle").textContent=new Date(ds+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  const ev=on(ds);
+  $("dayList").innerHTML=ev.length?ev.map(saleCard).join(""):
+    `<div class="empty"><b>No sales this day</b>Marked dates have a sale scheduled.</div>`;
+  drawCal();
+};
+$("pm").onclick=()=>{if(--vm<0){vm=11;vy--;}drawCal();};
+$("nm").onclick=()=>{if(++vm>11){vm=0;vy++;}drawCal();};
+$("tm").onclick=()=>{const n=new Date();vy=n.getFullYear();vm=n.getMonth();pick(TODAY);};
+
+/* ============================================================
+   SELL
+   ============================================================ */
+let me=null;
+$("tIn").onclick=()=>{$("tIn").classList.add("on");$("tUp").classList.remove("on");$("doAuth").textContent="Log in";};
+$("tUp").onclick=()=>{$("tUp").classList.add("on");$("tIn").classList.remove("on");$("doAuth").textContent="Create account";};
+$("doAuth").onclick=()=>{
+  const e=$("aEmail").value.trim();
+  if(!e)return toast("Enter an email address",1);
+  me=e;$("sellAuth").style.display="none";$("sellMain").style.display="block";
+  drawMine();toast("Signed in as "+e);
+};
+$("doOut").onclick=()=>{me=null;$("sellMain").style.display="none";$("sellAuth").style.display="block";};
+
+function drawMine(){
+  const m=stock.filter(s=>s.mine);
+  $("myList").innerHTML=m.length?m.map(l=>`<div class="rowitem" onclick="${l.st==="live"?`openStock(${l.id})`:""}">
+    <div class="th" style="background-image:url('${l.img}')"></div>
+    <div class="info"><h4>${esc(l.breed)} — ${money(l.price)}</h4>
+    <div class="m">${esc(l.type)}${l.wt?" · "+l.wt+" kg":""} · ${esc(l.loc)}</div></div>
+    <span class="statuspill ${l.st}">${l.st==="live"?"Live":l.st==="pending"?"In review":"Declined"}</span>
+  </div>`).join(""):`<div class="empty"><b>No listings yet</b>Tap below to list your first animal.</div>`;
+}
+
+$("openNew").onclick=()=>{
+  pushDetail("New listing",`<div class="form" style="padding-top:20px">
+    <div class="duo">
+      <div class="fld"><label for="n_breed">Breed</label><input id="n_breed" placeholder="Bonsmara"></div>
+      <div class="fld"><label for="n_type">Type</label><select id="n_type"><option>Cow</option><option>Calf</option><option>Bull</option><option>Heifer</option><option>Steer</option><option>Ox</option></select></div>
+    </div>
+    <div class="duo">
+      <div class="fld"><label for="n_wt">Weight (kg)</label><input type="number" inputmode="numeric" id="n_wt" placeholder="420"></div>
+      <div class="fld"><label for="n_pr">Price (R)</label><input type="number" inputmode="numeric" id="n_pr" placeholder="18500"></div>
+    </div>
+    <div class="fld"><label for="n_loc">Farm location</label><input id="n_loc" placeholder="Mooi River, KZN"></div>
+    <div class="fld"><label for="n_desc">Description</label><textarea id="n_desc" placeholder="Condition, temperament, vaccination history…"></textarea></div>
+    <div class="fld"><label for="n_img">Photograph</label><input type="file" id="n_img" accept="image/*" capture="environment"><div class="hint">Tap to take a photo or choose from your gallery.</div></div>
+    <div class="duo">
+      <div class="fld"><label for="n_nm">Your name</label><input id="n_nm"></div>
+      <div class="fld"><label for="n_ph">Phone / WhatsApp</label><input type="tel" id="n_ph" placeholder="+27 82 000 0000"></div>
+    </div>
+    <button class="btn" onclick="submitListing()">Submit for review</button>
+  </div>`);
+};
+window.submitListing=()=>{
+  const b=$("n_breed").value.trim(),p=$("n_pr").value,n=$("n_nm").value.trim(),ph=$("n_ph").value.trim();
+  if(!b||!p||!n||!ph)return toast("Fill in breed, price, name and phone",1);
+  const f=$("n_img").files[0];
+  const done=img=>{
+    stock.push({id:++nid,lot:Math.random().toString(36).slice(2,7).toUpperCase(),breed:b,type:$("n_type").value,
+      wt:Number($("n_wt").value)||null,price:Number(p),loc:$("n_loc").value.trim()||"KZN",
+      desc:$("n_desc").value.trim()||"No description provided.",who:n,tel:ph,img:img||IMG.herd,st:"pending",mine:true});
+    history.back(); drawMine(); drawPend(); drawChips();
+    toast("Submitted — our office will review it");
+  };
+  if(f){const r=new FileReader();r.onload=()=>done(r.result);r.readAsDataURL(f);}else done(null);
+};
+
+/* ============================================================
+   ADMIN
+   ============================================================ */
+$("doAdm").onclick=()=>{$("admAuth").style.display="none";$("admMain").style.display="block";refresh();toast("Signed in to admin");};
+$("admOut").onclick=()=>{$("admMain").style.display="none";$("admAuth").style.display="block";};
+document.querySelectorAll("#admChips .chip").forEach(c=>c.onclick=()=>{
+  document.querySelectorAll("#admChips .chip").forEach(x=>x.classList.remove("on"));
+  c.classList.add("on");
+  ["pend","ev","ven"].forEach(t=>$("a-"+t).style.display=(t===c.dataset.a)?"block":"none");
+});
+
+function drawPend(){
+  const p=stock.filter(s=>s.st==="pending");
+  $("pendCount").textContent=p.length+" waiting";
+  $("tabBadge").style.display=p.length?"grid":"none";
+  $("tabBadge").textContent=p.length;
+  $("pendList").innerHTML=p.length?p.map(l=>`<div class="rowitem">
+    <div class="th" style="background-image:url('${l.img}')"></div>
+    <div class="info"><h4>${esc(l.breed)} — ${money(l.price)}</h4>
+    <div class="m">${esc(l.type)}${l.wt?" · "+l.wt+" kg":""} · ${esc(l.who)}</div></div>
+    <div class="acts"><button class="btn sm" onclick="setSt(${l.id},'live')">Approve</button>
+    <button class="btn sm warn" onclick="setSt(${l.id},'rejected')">✕</button></div>
+  </div>`).join(""):`<div class="empty"><b>All clear</b>Nothing waiting for review.</div>`;
+}
+window.setSt=(id,st)=>{
+  const l=stock.find(x=>x.id===id); if(l)l.st=st;
+  drawPend();drawChips();drawMarket();drawMine();
+  toast(st==="live"?"Listing approved and live":"Listing declined");
+};
+
+function drawEv(){
+  const s=[...events].sort((a,b)=>a.date.localeCompare(b.date));
+  $("evList").innerHTML=s.map(e=>{const d=new Date(e.date+"T00:00:00"),past=e.date<TODAY;
+    return `<div class="rowitem" style="${past?"opacity:.5":""}">
+      <div class="dchip"><i>${d.toLocaleString("en-GB",{month:"short"})}</i><b>${d.getDate()}</b></div>
+      <div class="info"><h4>${esc(e.title)}${past?'<span class="past">Past</span>':""}</h4>
+      <div class="m">${esc(V(e.ven).name)}${e.start?" · "+t12(e.start):""}</div></div>
+      <div class="acts"><button class="btn sm ghost" onclick="editEv(${e.id})">Edit</button></div>
+    </div>`;}).join("")||`<div class="empty"><b>No events</b>Add your first sale event.</div>`;
+}
+function evForm(e){
+  const E=e||{};
+  return `<div class="form" style="padding-top:20px">
+    <div class="fld"><label for="x_t">Sale title</label><input id="x_t" value="${esc(E.title||"")}" placeholder="Mooi River Standard Sale"></div>
+    <div class="duo">
+      <div class="fld"><label for="x_c">Sale type</label><select id="x_c">
+        <option${E.cat==="Standard Sale"?" selected":""}>Standard Sale</option>
+        <option${E.cat==="Production Sale"?" selected":""}>Production Sale</option></select></div>
+      <div class="fld"><label for="x_d">Date</label><input type="date" id="x_d" value="${E.date||""}"></div>
+    </div>
+    <div class="duo">
+      <div class="fld"><label for="x_s">Start</label><input type="time" id="x_s" value="${E.start||""}"></div>
+      <div class="fld"><label for="x_e">End</label><input type="time" id="x_e" value="${E.end||""}"></div>
+    </div>
+    <div class="fld"><label for="x_v">Venue</label><select id="x_v">${venues.map(v=>`<option value="${v.id}"${E.ven===v.id?" selected":""}>${esc(v.name)}</option>`).join("")}</select></div>
+    <div class="duo">
+      <div class="fld"><label for="x_wn">Field officer</label><input id="x_wn" value="${esc(E.who||"")}" placeholder="Ed Cadle"></div>
+      <div class="fld"><label for="x_wp">Phone</label><input type="tel" id="x_wp" value="${esc(E.tel||"")}" placeholder="082 802 7540"></div>
+    </div>
+    <div class="fld"><label for="x_we">Email</label><input type="email" id="x_we" value="${esc(E.em||"")}"></div>
+    <div class="fld"><label for="x_n">Sale notes</label><textarea id="x_n" placeholder="Lot count, catalogue, entry deadline…">${esc(E.note||"")}</textarea></div>
+    <button class="btn" onclick="saveEv(${E.id||0})">${E.id?"Save changes":"Add event"}</button>
+    ${E.id?`<button class="btn warn" style="margin-top:10px" onclick="delEv(${E.id})">Delete event</button>`:""}
+  </div>`;
+}
+$("newEv").onclick=()=>pushDetail("Add sale event",evForm(null));
+window.editEv=id=>pushDetail("Edit sale event",evForm(events.find(e=>e.id===id)));
+window.saveEv=id=>{
+  const t=$("x_t").value.trim(),d=$("x_d").value,v=Number($("x_v").value);
+  if(!t||!d||!v)return toast("Add a title, date and venue",1);
+  const data={title:t,cat:$("x_c").value,date:d,start:$("x_s").value,end:$("x_e").value,ven:v,
+    who:$("x_wn").value.trim(),tel:$("x_wp").value.trim(),em:$("x_we").value.trim(),note:$("x_n").value.trim()};
+  if(id){Object.assign(events.find(e=>e.id===id),data);toast("Event updated");}
+  else{events.push({id:++nid,img:IMG.herd,...data});toast("Event added to the calendar");}
+  history.back();
+  const dt=new Date(d+"T00:00:00");vy=dt.getFullYear();vm=dt.getMonth();
+  refresh();pick(d);
+};
+window.delEv=id=>{
+  if(!confirm("Delete this sale event?"))return;
+  events=events.filter(e=>e.id!==id);history.back();refresh();toast("Event deleted");
+};
+
+function drawVen(){
+  $("venList").innerHTML=venues.map(v=>{
+    const n=events.filter(e=>e.ven===v.id&&e.date>=TODAY).length;
+    return `<div class="rowitem">
+      <div class="info"><h4>${esc(v.name)}</h4><div class="m">${esc(v.town)} · ${n} upcoming</div></div>
+      <div class="acts"><button class="btn sm ghost" onclick="editVen(${v.id})">Edit</button></div>
+    </div>`;}).join("")||`<div class="empty"><b>No sale yards</b>Add your first venue.</div>`;
+}
+function venForm(v){
+  const V0=v||{};
+  return `<div class="form" style="padding-top:20px">
+    <div class="fld"><label for="y_n">Yard name</label><input id="y_n" value="${esc(V0.name||"")}" placeholder="Mooi River Sale Yard"></div>
+    <div class="fld"><label for="y_t">Town / district</label><input id="y_t" value="${esc(V0.town||"")}" placeholder="Mooi River, KZN"></div>
+    <div class="fld"><label for="y_c">Office contact</label><input type="tel" id="y_c" value="${esc(V0.contact||"")}"></div>
+    <div class="fld"><label for="y_m">Google Maps link</label><input id="y_m" value="${esc(V0.map||"")}" placeholder="https://maps.google.com/…"><div class="hint">Powers the Directions button on every sale here.</div></div>
+    <div class="fld"><label for="y_o">Facilities / notes</label><input id="y_o" value="${esc(V0.note||"")}" placeholder="Certified scale, covered pens"></div>
+    <button class="btn" onclick="saveVen(${V0.id||0})">${V0.id?"Save changes":"Add venue"}</button>
+    ${V0.id?`<button class="btn warn" style="margin-top:10px" onclick="delVen(${V0.id})">Delete venue</button>`:""}
+  </div>`;
+}
+$("newVen").onclick=()=>pushDetail("Add sale yard",venForm(null));
+window.editVen=id=>pushDetail("Edit sale yard",venForm(venues.find(v=>v.id===id)));
+window.saveVen=id=>{
+  const n=$("y_n").value.trim(),t=$("y_t").value.trim();
+  if(!n||!t)return toast("Add a yard name and town",1);
+  const d={name:n,town:t,contact:$("y_c").value.trim(),map:$("y_m").value.trim(),note:$("y_o").value.trim()};
+  if(id){Object.assign(venues.find(v=>v.id===id),d);toast("Yard updated");}
+  else{venues.push({id:++nid,...d});toast("Yard added");}
+  history.back();refresh();
+};
+window.delVen=id=>{
+  const u=events.filter(e=>e.ven===id).length;
+  if(!confirm(u?`${u} sale event${u===1?"":"s"} use this yard. Delete anyway?`:"Delete this sale yard?"))return;
+  venues=venues.filter(v=>v.id!==id);history.back();refresh();toast("Yard deleted");
+};
+
+/* ============================================================
+   PULL TO REFRESH
+   ============================================================ */
+let ptrY=0,ptrOn=false;
+document.querySelectorAll(".screen").forEach(sc=>{
+  sc.addEventListener("touchstart",e=>{if(sc.scrollTop<=0){ptrY=e.touches[0].clientY;ptrOn=true;}},{passive:true});
+  sc.addEventListener("touchmove",e=>{
+    if(!ptrOn)return;
+    const dy=e.touches[0].clientY-ptrY;
+    if(dy>0&&sc.scrollTop<=0)$("ptr").style.height=Math.min(dy*.45,56)+"px";
+  },{passive:true});
+  sc.addEventListener("touchend",()=>{
+    if(!ptrOn)return; ptrOn=false;
+    const h=parseFloat($("ptr").style.height||0);
+    if(h>40){
+      $("ptr").classList.add("spin");
+      setTimeout(()=>{$("ptr").classList.remove("spin");$("ptr").style.height="0px";refresh();toast("Up to date");},900);
+    }else $("ptr").style.height="0px";
+  },{passive:true});
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function refresh(){drawChips();drawSales();drawMarket();drawCal();drawEv();drawVen();drawPend();drawMine();if(sel)pick(sel);}
+
+function skeleton(){
+  const s=`<div class="sk"><i class="a"></i><div class="b"><i style="width:60%"></i><i style="width:85%"></i><i style="width:40%"></i></div></div>`;
+  $("saleList").innerHTML=s+s+s;
+}
+skeleton();
+setTimeout(()=>{refresh();pick(TODAY);go("sales");},650);
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
