@@ -28,6 +28,8 @@ that demo data with Firebase, without changing the UX.
 ```
 listings/{id}
   lot, breed, type, wt, price, loc, desc,
+  qty,                         // head count for a herd lot (>= 2); null = single animal.
+                               // For a herd, wt is average weight and price is for the whole lot
   who, tel,                    // seller name + phone
   img,                         // Cloud Storage download URL
   status: "pending"|"live"|"rejected",

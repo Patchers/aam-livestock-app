@@ -420,6 +420,7 @@ let stock=[
   {id:5,lot:"BN5512",breed:"Bonsmara",type:"Calf",wt:180,price:8900,loc:"Mooi River, KZN",desc:"Weaner calf, dehorned and dosed. Weaned three weeks ago and eating well.",who:"P. Naidoo",tel:"+27821234567",img:IMG.calf,st:"live",mine:false},
   {id:6,lot:"NG7734",breed:"Nguni",type:"Ox",wt:610,price:27500,loc:"Bergville, KZN",desc:"Strong frame with a good condition score. Sold as one lot, quiet to handle.",who:"T. Zulu",tel:"+27736664455",img:IMG.nguni,st:"live",mine:false},
   {id:7,lot:"DR0088",breed:"Drakensberger",type:"Cow",wt:465,price:19750,loc:"Winterton, KZN",desc:"Quiet cow with calf at foot. Selling as a pair, calf is a bull calf born in April.",who:"M. Ferreira",tel:"+27827773344",img:IMG.dusk,st:"pending",mine:true},
+  {id:9,lot:"NG3050",breed:"Nguni",type:"Heifer",qty:12,wt:330,price:162000,loc:"Kokstad, KZN",desc:"Herd of 12 matched Nguni heifers, all bred on the farm. Dosed, vaccinated and running together — selling as one lot.",who:"L. Dlamini",tel:"+27834442211",img:IMG.herd,st:"live",mine:false},
   {id:8,lot:"SM4419",breed:"Simmentaler",type:"Bull",wt:820,price:51000,loc:"Greytown, KZN",desc:"Young bull, semen tested and passed. Registration papers available on request.",who:"K. Botha",tel:"+27825556699",img:IMG.stud,st:"pending",mine:false}
 ];
 
@@ -630,6 +631,9 @@ window.openSale=id=>{
 /* ============================================================
    MARKET
    ============================================================ */
+const isHerd=l=>l.qty>1;
+const kindTxt=l=>isHerd(l)?`Herd · ${l.qty} × ${esc(l.type)}`:esc(l.type);
+const wtTxt=l=>l.wt?" · "+(isHerd(l)?"avg ":"")+l.wt+" kg":"";
 function stockCard(l){
   return `<div class="stockcard">
     <div class="ph" style="background-image:url('${l.img}')" onclick="openStock(${l.id})">
@@ -638,7 +642,7 @@ function stockCard(l){
     <button class="heart${saved.has(l.id)?" on":""}" onclick="fav(${l.id},event)" aria-label="Save">${IC.heart}</button>
     <div class="body" onclick="openStock(${l.id})">
       <div class="top"><h3>${esc(l.breed)}</h3><span class="price">${money(l.price)}</span></div>
-      <div class="sub">${esc(l.type)}${l.wt?" · "+l.wt+" kg":""} · ${esc(l.loc)}</div>
+      <div class="sub">${kindTxt(l)}${wtTxt(l)} · ${esc(l.loc)}</div>
     </div>
   </div>`;
 }
@@ -670,13 +674,15 @@ window.openStock=id=>{
   const wa=l.tel.replace(/[^\d]/g,"");
   pushDetail(l.lot,`
     <div class="dhero" style="background-image:url('${l.img}')">
-      <div class="over"><span class="tagline" style="background:rgba(255,255,255,.9)">${esc(l.type)}</span><h2>${esc(l.breed)}</h2></div>
+      <div class="over"><span class="tagline" style="background:rgba(255,255,255,.9)">${kindTxt(l)}</span><h2>${esc(l.breed)}</h2></div>
     </div>
     <div class="dbody">
       <div class="bigprice">${money(l.price)}</div>
+      ${isHerd(l)?`<div class="sub" style="color:var(--soft);font-size:.85rem">For the lot of ${l.qty} · ${money(Math.round(l.price/l.qty))} per head</div>`:""}
       <div class="dcard" style="margin-top:12px">
         <div class="drow">${IC.tag}<div><div class="k">Lot number</div><div class="v">${esc(l.lot)}</div></div></div>
-        ${l.wt?`<div class="drow">${IC.scale}<div><div class="k">Weight</div><div class="v">${l.wt} kg</div></div></div>`:""}
+        ${isHerd(l)?`<div class="drow">${IC.tag}<div><div class="k">Number of head</div><div class="v">${l.qty}</div></div></div>`:""}
+        ${l.wt?`<div class="drow">${IC.scale}<div><div class="k">${isHerd(l)?"Average weight":"Weight"}</div><div class="v">${l.wt} kg</div></div></div>`:""}
         <div class="drow">${IC.pin}<div><div class="k">Location</div><div class="v">${esc(l.loc)}</div></div></div>
       </div>
       <div class="dnote">${esc(l.desc)}</div>
@@ -748,20 +754,22 @@ function drawMine(){
   $("myList").innerHTML=m.length?m.map(l=>`<div class="rowitem" onclick="${l.st==="live"?`openStock(${l.id})`:""}">
     <div class="th" style="background-image:url('${l.img}')"></div>
     <div class="info"><h4>${esc(l.breed)} — ${money(l.price)}</h4>
-    <div class="m">${esc(l.type)}${l.wt?" · "+l.wt+" kg":""} · ${esc(l.loc)}</div></div>
+    <div class="m">${kindTxt(l)}${wtTxt(l)} · ${esc(l.loc)}</div></div>
     <span class="statuspill ${l.st}">${l.st==="live"?"Live":l.st==="pending"?"In review":"Declined"}</span>
   </div>`).join(""):`<div class="empty"><b>No listings yet</b>Tap below to list your first animal.</div>`;
 }
 
 $("openNew").onclick=()=>{
   pushDetail("New listing",`<div class="form" style="padding-top:20px">
+    <div class="seg"><button id="n_one" class="on" onclick="setKind(0)">Single animal</button><button id="n_herd" onclick="setKind(1)">Herd</button></div>
+    <div class="fld" id="n_qtyF" style="display:none"><label for="n_qty">Number of head</label><input type="number" inputmode="numeric" id="n_qty" min="2" placeholder="12"></div>
     <div class="duo">
       <div class="fld"><label for="n_breed">Breed</label><input id="n_breed" placeholder="Bonsmara"></div>
-      <div class="fld"><label for="n_type">Type</label><select id="n_type"><option>Cow</option><option>Calf</option><option>Bull</option><option>Heifer</option><option>Steer</option><option>Ox</option></select></div>
+      <div class="fld"><label for="n_type">Type</label><select id="n_type"><option>Cow</option><option>Calf</option><option>Bull</option><option>Heifer</option><option>Steer</option><option>Ox</option><option id="n_mixed" hidden disabled>Mixed</option></select></div>
     </div>
     <div class="duo">
-      <div class="fld"><label for="n_wt">Weight (kg)</label><input type="number" inputmode="numeric" id="n_wt" placeholder="420"></div>
-      <div class="fld"><label for="n_pr">Price (R)</label><input type="number" inputmode="numeric" id="n_pr" placeholder="18500"></div>
+      <div class="fld"><label for="n_wt" id="n_wtL">Weight (kg)</label><input type="number" inputmode="numeric" id="n_wt" placeholder="420"></div>
+      <div class="fld"><label for="n_pr" id="n_prL">Price (R)</label><input type="number" inputmode="numeric" id="n_pr" placeholder="18500"></div>
     </div>
     <div class="fld"><label for="n_loc">Farm location</label><input id="n_loc" placeholder="Mooi River, KZN"></div>
     <div class="fld"><label for="n_desc">Description</label><textarea id="n_desc" placeholder="Condition, temperament, vaccination history…"></textarea></div>
@@ -773,12 +781,22 @@ $("openNew").onclick=()=>{
     <button class="btn" onclick="submitListing()">Submit for review</button>
   </div>`);
 };
+window.setKind=h=>{
+  $("n_one").classList.toggle("on",!h);$("n_herd").classList.toggle("on",!!h);
+  $("n_qtyF").style.display=h?"block":"none";
+  $("n_wtL").textContent=h?"Avg weight (kg)":"Weight (kg)";
+  $("n_prL").textContent=h?"Price for the lot (R)":"Price (R)";
+  const mx=$("n_mixed");mx.hidden=mx.disabled=!h;
+  if(!h&&$("n_type").value==="Mixed")$("n_type").selectedIndex=0;
+};
 window.submitListing=()=>{
   const b=$("n_breed").value.trim(),p=$("n_pr").value,n=$("n_nm").value.trim(),ph=$("n_ph").value.trim();
+  const herd=$("n_herd").classList.contains("on"),q=Math.floor(Number($("n_qty").value));
   if(!b||!p||!n||!ph)return toast("Fill in breed, price, name and phone",1);
+  if(herd&&!(q>=2))return toast("Enter how many head are in the herd (2 or more)",1);
   const f=$("n_img").files[0];
   const done=img=>{
-    stock.push({id:++nid,lot:Math.random().toString(36).slice(2,7).toUpperCase(),breed:b,type:$("n_type").value,
+    stock.push({id:++nid,lot:Math.random().toString(36).slice(2,7).toUpperCase(),breed:b,type:$("n_type").value,qty:herd?q:null,
       wt:Number($("n_wt").value)||null,price:Number(p),loc:$("n_loc").value.trim()||"KZN",
       desc:$("n_desc").value.trim()||"No description provided.",who:n,tel:ph,img:img||IMG.herd,st:"pending",mine:true});
     history.back(); drawMine(); drawPend(); drawChips();
@@ -806,7 +824,7 @@ function drawPend(){
   $("pendList").innerHTML=p.length?p.map(l=>`<div class="rowitem">
     <div class="th" style="background-image:url('${l.img}')"></div>
     <div class="info"><h4>${esc(l.breed)} — ${money(l.price)}</h4>
-    <div class="m">${esc(l.type)}${l.wt?" · "+l.wt+" kg":""} · ${esc(l.who)}</div></div>
+    <div class="m">${kindTxt(l)}${wtTxt(l)} · ${esc(l.who)}</div></div>
     <div class="acts"><button class="btn sm" onclick="setSt(${l.id},'live')">Approve</button>
     <button class="btn sm warn" onclick="setSt(${l.id},'rejected')">✕</button></div>
   </div>`).join(""):`<div class="empty"><b>All clear</b>Nothing waiting for review.</div>`;
